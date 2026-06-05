@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Block Blast Deluxe - ネオンパズル</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* モバイルでのタッチスクロールや3Dタッチ等のデフォルト挙動を抑制 */
+    body {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      background-color: #0b0f19;
+    }
+    /* 各スロットでブラウザスクロールを無効化しタッチドラッグを確実に作動させる */
+    .dock-slot {
+      touch-action: none;
+    }
+    /* ネオングロー効果 */
+    .neon-text-blue {
+      text-shadow: 0 0 5px rgba(59, 130, 246, 0.5), 0 0 15px rgba(59, 130, 246, 0.7);
+    }
+    .neon-text-pink {
+      text-shadow: 0 0 5px rgba(236, 72, 153, 0.5), 0 0 15px rgba(236, 72, 153, 0.7);
+    }
+    .neon-border-purple {
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.4), inset 0 0 10px rgba(168, 85, 247, 0.2);
+    }
+    /* 3Dブロック風の陰影 */
+    .block-3d {
+      box-shadow: inset 3px 3px 0px rgba(255, 255, 255, 0.3),
+                  inset -3px -3px 0px rgba(0, 0, 0, 0.4);
+    }
+    /* シェイクアニメーションクラス */
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      10% { transform: translate(-3px, 2px) rotate(-0.5deg); }
+      20% { transform: translate(2px, -3px) rotate(1deg); }
+      30% { transform: translate(-1px, 1px) rotate(0deg); }
+      40% { transform: translate(3px, 2px) rotate(0.5deg); }
+      50% { transform: translate(-2px, -1px) rotate(-1deg); }
+      60% { transform: translate(1px, 3px) rotate(0deg); }
+      70% { transform: translate(-3px, -2px) rotate(1deg); }
+      80% { transform: translate(2px, 1px) rotate(-0.5deg); }
+      90% { transform: translate(-1px, -2px) rotate(0deg); }
+    }
+    .shake-active {
+      animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+    }
+  </style>
+</head>
+<body class="w-full h-screen overflow-hidden flex flex-col items-center justify-between p-3 text-white">
+
+  <!-- パーティクル＆エフェクト用キャンバス（画面最前面に重ねる） -->
+  <canvas id="effectsCanvas" class="absolute top-0 left-0 w-full h-full pointer-events-none z-40"></canvas>
+
+  <!-- ヘッダーUI -->
+  <header class="w-full max-w-md flex justify-between items-center z-10 py-1">
+    <div>
+      <h1 class="text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+        BLOCK BLAST <span class="text-xs px-1.5 py-0.5 rounded bg-pink-600 text-white font-bold ml-1">DX</span>
+      </h1>
+      <p class="text-xs text-gray-400">回転 &amp; アイテムを駆使せよ！</p>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <!-- ミュートボタン -->
+      <button id="muteBtn" class="w-9 h-9 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center hover:bg-gray-700 transition">
+        <i id="muteIcon" class="fas fa-volume-up text-blue-400"></i>
+      </button>
+      <!-- ヘルプボタン -->
+      <button id="helpBtn" class="w-9 h-9 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center hover:bg-gray-700 transition">
+        <i class="fas fa-question text-purple-400"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- スコア＆ハイスコア表示 -->
+  <section class="w-full max-w-md grid grid-cols-2 gap-3 z-10">
+    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-2.5 text-center neon-border-purple">
+      <span class="text-xs text-gray-400 uppercase tracking-widest block mb-0.5">SCORE</span>
+      <span id="scoreVal" class="text-2xl font-black text-blue-400 neon-text-blue">0</span>
+    </div>
+    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-2.5 text-center">
+      <span class="text-xs text-gray-400 uppercase tracking-widest block mb-0.5">BEST SCORE</span>
+      <span id="bestScoreVal" class="text-2xl font-black text-pink-400 neon-text-pink">0</span>
+    </div>
+  </section>
+
+  <!-- お助けアイテム枠 (Items Area) -->
+  <section class="w-full max-w-md flex justify-around items-center bg-gray-900/60 border border-gray-800/80 rounded-xl p-2 z-10 my-1">
+    <!-- ボムアイテム -->
+    <button id="itemBombBtn" class="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-lg bg-gray-800/80 border border-red-900/50 hover:bg-gray-700/80 transition group active:scale-95">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-bomb text-red-500 text-lg group-hover:animate-bounce"></i>
+        <span class="text-xs font-bold text-red-300">ボム爆破</span>
+      </div>
+      <span id="bombCount" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full border border-red-400 shadow-md">2</span>
+      <p class="text-[9px] text-gray-400">盤面3x3を消去</p>
+    </button>
+
+    <!-- シャッフルアイテム -->
+    <button id="itemShuffleBtn" class="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-lg bg-gray-800/80 border border-amber-900/50 hover:bg-gray-700/80 transition group active:scale-95">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-random text-amber-500 text-lg group-hover:rotate-180 transition-transform duration-500"></i>
+        <span class="text-xs font-bold text-amber-300">シャッフル</span>
+      </div>
+      <span id="shuffleCount" class="absolute -top-1.5 -right-1.5 bg-amber-600 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full border border-amber-400 shadow-md">2</span>
+      <p class="text-[9px] text-gray-400">ドックを全入替</p>
+    </button>
+  </section>
+
+  <!-- ゲームメッセージ / ボム動作状態指示器 -->
+  <div id="statusIndicator" class="h-6 flex items-center justify-center text-xs font-semibold text-purple-300 z-10 transition-all duration-300 opacity-0 transform translate-y-1">
+    <i class="fas fa-info-circle mr-1.5"></i> <span id="statusText">ボム：破壊するマスをタップしてください</span>
+  </div>
+
+  <!-- メインゲーム盤面コンテナ (8x8 Grid) -->
+  <main id="gameBoardContainer" class="w-full max-w-md aspect-square bg-slate-950 rounded-2xl p-2 border-2 border-slate-800 shadow-2xl relative z-20 flex items-center justify-center">
+    <div id="board" class="grid grid-cols-8 grid-rows-8 gap-1 w-full h-full relative">
+      <!-- JavaScriptで動的に8x8のマス目を生成 -->
+    </div>
+  </main>
+
+  <!-- ドック操作説明テキスト -->
+  <div class="text-[10px] text-gray-500 text-center select-none z-10 my-1">
+    <i class="fas fa-sync-alt mr-1"></i> ブロックをタップ（または下のボタン）で回転 / ドラッグで配置
+  </div>
+
+  <!-- ドックエリア (Dock Slots & Rotate Controls) -->
+  <section class="w-full max-w-md flex flex-col gap-2 z-20 pb-4">
+    <!-- スロットコンテナ -->
+    <div class="grid grid-cols-3 gap-2.5 items-stretch">
+      
+      <!-- スロット 0 -->
+      <div class="flex flex-col items-center gap-1.5 bg-gray-900/50 border border-gray-800/60 rounded-xl p-1.5 relative">
+        <div id="slot-0" class="dock-slot w-full aspect-square flex items-center justify-center relative select-none cursor-grab active:cursor-grabbing" data-slot="0">
+          <!-- ブロックが描画される -->
+        </div>
+        <button class="rotate-btn w-full py-1 text-[10px] font-bold bg-purple-950/60 border border-purple-800/40 rounded hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1 active:scale-95" data-slot="0">
+          <i class="fas fa-redo text-[8px] text-purple-400"></i> 回転
+        </button>
+      </div>
+
+      <!-- スロット 1 -->
+      <div class="flex flex-col items-center gap-1.5 bg-gray-900/50 border border-gray-800/60 rounded-xl p-1.5 relative">
+        <div id="slot-1" class="dock-slot w-full aspect-square flex items-center justify-center relative select-none cursor-grab active:cursor-grabbing" data-slot="1">
+          <!-- ブロックが描画される -->
+        </div>
+        <button class="rotate-btn w-full py-1 text-[10px] font-bold bg-purple-950/60 border border-purple-800/40 rounded hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1 active:scale-95" data-slot="1">
+          <i class="fas fa-redo text-[8px] text-purple-400"></i> 回転
+        </button>
+      </div>
+
+      <!-- スロット 2 -->
+      <div class="flex flex-col items-center gap-1.5 bg-gray-900/50 border border-gray-800/60 rounded-xl p-1.5 relative">
+        <div id="slot-2" class="dock-slot w-full aspect-square flex items-center justify-center relative select-none cursor-grab active:cursor-grabbing" data-slot="2">
+          <!-- ブロックが描画される -->
+        </div>
+        <button class="rotate-btn w-full py-1 text-[10px] font-bold bg-purple-950/60 border border-purple-800/40 rounded hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1 active:scale-95" data-slot="2">
+          <i class="fas fa-redo text-[8px] text-purple-400"></i> 回転
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ドラッグ中のダミー要素表示コンテナ (スマホ操作時に指で隠れないようにオフセット描画するためのもの) -->
+  <div id="dragContainer" class="fixed pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 hidden select-none"></div>
+
+  <!-- ゲームオーバー / スタート時 オーバーレイモーダル -->
+  <div id="overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 hidden">
+    <div class="bg-gray-900 border-2 border-purple-500 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl neon-border-purple relative overflow-hidden">
+      
+      <!-- 装飾バックグラウンド -->
+      <div class="absolute -top-12 -left-12 w-24 h-24 bg-pink-500/10 rounded-full blur-xl"></div>
+      <div class="absolute -bottom-12 -right-12 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+
+      <h2 id="modalTitle" class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 mb-2 tracking-wider">
+        BLOCK BLAST
+      </h2>
+      <p id="modalDesc" class="text-sm text-gray-400 mb-6">思考を巡らせて最高のスコアを目指せ！</p>
+      
+      <!-- スコア表示（ゲームオーバー用） -->
+      <div id="modalScoreBox" class="bg-gray-950 border border-gray-800 rounded-2xl p-4 mb-6 hidden">
+        <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">あなたのスコア</div>
+        <div id="modalScore" class="text-4xl font-black text-blue-400 neon-text-blue">0</div>
+        <div id="newBestBadge" class="text-xs text-yellow-400 font-bold mt-2 animate-pulse hidden">
+          <i class="fas fa-trophy mr-1"></i> NEW BEST RECORD!
+        </div>
+      </div>
+
+      <button id="modalActionBtn" class="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 font-bold text-lg shadow-lg active:scale-95 transition-all">
+        ゲームを始める
+      </button>
+    </div>
+  </div>
+
+  <!-- ヘルプ・ルール説明モーダル -->
+  <div id="helpModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-xs w-full shadow-2xl text-sm relative">
+      <button id="closeHelpBtn" class="absolute top-3 right-3 text-gray-400 hover:text-white">
+        <i class="fas fa-times text-lg"></i>
+      </button>
+      <h3 class="text-lg font-bold text-blue-400 mb-4 border-b border-gray-800 pb-2"><i class="fas fa-info-circle mr-1.5"></i> 遊び方説明</h3>
+      <ul class="space-y-3 text-gray-300">
+        <li><b class="text-white">1. ブロック配置:</b> 下のドックからブロックをドラッグし、盤面の空きマスへ置いてください。</li>
+        <li><b class="text-white">2. 回転機能:</b> 各ブロックの下の「回転」ボタンを押すか、ブロック自体を軽くタップすると時計回りに回転します。</li>
+        <li><b class="text-white">3. ライン消去:</b> 縦・横一列が揃うとブロックが消え、マルチライン同時消去でコンボボーナスが加算されます。</li>
+        <li><b class="text-white">4. ゲームオーバー:</b> ドックに残ったどのブロックも盤面に置けなくなるとゲームオーバーです。</li>
+        <li><b class="text-white">5. お助けアイテム:</b> 
+          <ul class="list-disc pl-4 mt-1 space-y-1 text-xs text-gray-400">
+            <li><span class="text-red-400 font-bold">ボム</span>: 盤面の任意の3x3エリアを爆破。</li>
+            <li><span class="text-amber-400 font-bold">シャッフル</span>: 手札のブロックを全て入れ替え。</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- JavaScript ゲームロジック -->
+  <script>
+    // ==========================================
+    // 1. 定数・グローバルステート & ブロック定義
+    // ==========================================
+    const BOARD_SIZE = 8;
+    let boardState = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+    
+    // スコア管理
+    let score = 0;
+    let bestScore = parseInt(localStorage.getItem('block_blast_dx_best') || '0', 10);
+
+    // お助けアイテムカウント
+    let items = {
+      bomb: 2,
+      shuffle: 2
+    };
+
+    // ゲームのアクティブ状態
+    let isGameOver = false;
+    let isGameStarted = false;
+    let isMuted = false;
+    let isBombModeActive = false; // ボム配置モード
+
+    // ドック情報（各スロットに置かれているブロックデータ）
+    let dockState = [null, null, null];
+
+    // ドラッグ＆ドロップ状態管理
+    let dragInfo = {
+      isDragging: false,
+      slotIndex: null,
+      startX: 0,
+      startY: 0,
+      currentX: 0,
+      currentY: 0,
+      offsetGridX: 0,
+      offsetGridY: 0,
+      pointerId: null
+    };
+
+    // ブロック形状の定義 (カラーパターン、回転軸)
+    const COLORS = {
+      cyan: { bg: 'bg-cyan-500', border: 'border-cyan-400', glow: 'rgba(6, 182, 212, 0.4)' },
+      blue: { bg: 'bg-blue-500', border: 'border-blue-400', glow: 'rgba(59, 130, 246, 0.4)' },
+      indigo: { bg: 'bg-indigo-500', border: 'border-indigo-400', glow: 'rgba(99, 102, 241, 0.4)' },
+      purple: { bg: 'bg-purple-500', border: 'border-purple-400', glow: 'rgba(168, 85, 247, 0.4)' },
+      pink: { bg: 'bg-pink-500', border: 'border-pink-400', glow: 'rgba(236, 72, 153, 0.4)' },
+      red: { bg: 'bg-red-500', border: 'border-red-400', glow: 'rgba(239, 68, 68, 0.4)' },
+      orange: { bg: 'bg-orange-500', border: 'border-orange-400', glow: 'rgba(249, 115, 22, 0.4)' },
+      yellow: { bg: 'bg-yellow-500', border: 'border-yellow-400', glow: 'rgba(234, 179, 8, 0.4)' },
+      green: { bg: 'bg-green-500', border: 'border-green-400', glow: 'rgba(34, 197, 94, 0.4)' },
+      emerald: { bg: 'bg-emerald-500', border: 'border-emerald-400', glow: 'rgba(16, 185, 129, 0.4)' }
+    };
+
+    // 全ての可能なブロックプリセット（1x1から各種テトラミノまで）
+    const BLOCK_PRESETS = [
+      { shape: [[1]], color: 'cyan' },
+      { shape: [[1, 1]], color: 'blue' },
+      { shape: [[1], [1]], color: 'blue' },
+      { shape: [[1, 1, 1]], color: 'indigo' },
+      { shape: [[1], [1], [1]], color: 'indigo' },
+      { shape: [[1, 1, 1, 1]], color: 'purple' },
+      { shape: [[1], [1], [1], [1]], color: 'purple' },
+      { shape: [[1, 0], [1, 1]], color: 'orange' },
+      { shape: [[0, 1], [1, 1]], color: 'orange' },
+      { shape: [[1, 1], [1, 1]], color: 'yellow' },
+      { shape: [[1, 0, 0], [1, 0, 0], [1, 1, 1]], color: 'pink' },
+      { shape: [[1, 1, 1], [0, 1, 0]], color: 'green' },
+      { shape: [[1, 1, 0], [0, 1, 1]], color: 'red' },
+      { shape: [[0, 1, 1], [1, 1, 0]], color: 'red' },
+      { shape: [[1, 0, 1], [1, 1, 1]], color: 'emerald' },
+      { shape: [[1, 1], [1, 1]], color: 'yellow' }
+    ];
+
+    // ==========================================
+    // 2. Web Audio API による合成効果音 (遅延セキュア初期化)
+    // ==========================================
+    let audioCtx = null;
+
+    function initAudio() {
+      if (audioCtx) return;
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {
+        console.warn("AudioContextの作成がこのブラウザ/iframe環境でブロックされました。ゲームは無音で正常実行されます。", e);
+      }
+    }
+
+    function playSound(type) {
+      if (isMuted || !audioCtx) return;
+      
+      try {
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        switch (type) {
+          case 'select': {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(330, now);
+            osc.frequency.exponentialRampToValueAtTime(660, now + 0.08);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.1);
+            break;
+          }
+          case 'rotate': {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.08);
+            break;
+          }
+          case 'place': {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(110, now + 0.1);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.15);
+            break;
+          }
+          case 'blast': {
+            const duration = 0.4;
+            const osc1 = audioCtx.createOscillator();
+            const osc2 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            const gain2 = audioCtx.createGain();
+
+            osc1.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(523.25, now);
+            osc1.frequency.exponentialRampToValueAtTime(1046.5, now + duration);
+
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(130.81, now);
+            osc2.frequency.linearRampToValueAtTime(65.4, now + duration);
+
+            gain1.gain.setValueAtTime(0.1, now);
+            gain1.gain.linearRampToValueAtTime(0.01, now + duration);
+
+            gain2.gain.setValueAtTime(0.2, now);
+            gain2.gain.linearRampToValueAtTime(0.01, now + duration);
+
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+
+            osc1.start(now);
+            osc1.stop(now + duration);
+            osc2.start(now);
+            osc2.stop(now + duration);
+            break;
+          }
+          case 'bomb': {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(20, now + 0.5);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.6);
+            break;
+          }
+          case 'gameover': {
+            const notes = [196.00, 155.56, 130.81];
+            notes.forEach((freq, idx) => {
+              const osc = audioCtx.createOscillator();
+              const gain = audioCtx.createGain();
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+              osc.frequency.linearRampToValueAtTime(80, now + 0.8);
+              gain.gain.setValueAtTime(0.08, now + idx * 0.1);
+              gain.gain.linearRampToValueAtTime(0.001, now + 0.8);
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.start(now + idx * 0.1);
+              osc.stop(now + 0.8);
+            });
+            break;
+          }
+          case 'shuffle': {
+            for (let i = 0; i < 3; i++) {
+              const osc = audioCtx.createOscillator();
+              const gain = audioCtx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(300 + (i * 150), now + (i * 0.08));
+              gain.gain.setValueAtTime(0.1, now + (i * 0.08));
+              gain.gain.linearRampToValueAtTime(0.01, now + (i * 0.08) + 0.1);
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.start(now + (i * 0.08));
+              osc.stop(now + (i * 0.08) + 0.1);
+            }
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn("効果音の再生に失敗しました:", err);
+      }
+    }
+
+    // ==========================================
+    // 3. Canvas パーティクルシステム (超豪華演出)
+    // ==========================================
+    const canvas = document.getElementById('effectsCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function spawnParticles(x, y, colorCode, count = 12) {
+      const palette = {
+        cyan: ['#22d3ee', '#06b6d4', '#0891b2', '#0e7490'],
+        blue: ['#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8'],
+        indigo: ['#818cf8', '#6366f1', '#4f46e5', '#4338ca'],
+        purple: ['#c084fc', '#a855f7', '#9333ea', '#7e22ce'],
+        pink: ['#f472b6', '#ec4899', '#db2777', '#be185d'],
+        red: ['#f87171', '#ef4444', '#dc2626', '#b91c1c'],
+        orange: ['#fb923c', '#f97316', '#ea580c', '#c2410c'],
+        yellow: ['#fde047', '#eab308', '#ca8a04', '#a16207'],
+        emerald: ['#34d399', '#10b981', '#059669', '#047857'],
+        green: ['#4ade80', '#22c55e', '#16a34a', '#15803d'],
+      };
+
+      const colors = palette[colorCode] || ['#ffffff', '#a855f7', '#ec4899', '#3b82f6'];
+
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.5) * 12 - (Math.random() * 4),
+          size: Math.random() * 5 + 3,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1,
+          decay: Math.random() * 0.02 + 0.015,
+          gravity: 0.15,
+          shape: Math.random() > 0.5 ? 'circle' : 'square'
+        });
+      }
+    }
+
+    let floatingTexts = [];
+    function spawnFloatingText(x, y, text, colorHex = '#3b82f6') {
+      floatingTexts.push({
+        x: x,
+        y: y,
+        text: text,
+        color: colorHex,
+        alpha: 1,
+        vy: -2,
+        scale: 1
+      });
+    }
+
+    function updateEffects() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+        p.alpha -= p.decay;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.color;
+
+        if (p.shape === 'circle') {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+        }
+        ctx.restore();
+      }
+
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const t = floatingTexts[i];
+        t.y += t.vy;
+        t.alpha -= 0.02;
+        t.scale += 0.01;
+
+        if (t.alpha <= 0) {
+          floatingTexts.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = t.alpha;
+        ctx.fillStyle = t.color;
+        ctx.font = `black ${Math.floor(22 * t.scale)}px sans-serif`;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = t.color;
+        ctx.textAlign = 'center';
+        ctx.fillText(t.text, t.x, t.y);
+        ctx.restore();
+      }
+
+      requestAnimationFrame(updateEffects);
+    }
+    requestAnimationFrame(updateEffects);
+
+    // ==========================================
+    // 4. ゲームコアロジック & 盤面描画
+    // ==========================================
+    const boardEl = document.getElementById('board');
+
+    function createBoardCells() {
+      boardEl.innerHTML = '';
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const cell = document.createElement('div');
+          cell.id = `cell-${r}-${c}`;
+          cell.className = "w-full h-full rounded-md bg-slate-900 border border-slate-950 transition-all duration-150 flex items-center justify-center relative overflow-hidden";
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          
+          cell.addEventListener('click', () => handleCellClickForBomb(r, c));
+
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function renderBoard() {
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const val = boardState[r][c];
+          const cell = document.getElementById(`cell-${r}-${c}`);
+          if (!cell) continue;
+
+          cell.className = "w-full h-full rounded-md bg-slate-900 border border-slate-950 transition-all duration-150 flex items-center justify-center relative overflow-hidden";
+          cell.innerHTML = '';
+
+          if (val) {
+            const colorInfo = COLORS[val];
+            if (colorInfo) {
+              cell.className += ` ${colorInfo.bg} ${colorInfo.border} block-3d border-2`;
+              cell.style.boxShadow = `inset 2px 2px 0px rgba(255,255,255,0.4), inset -2px -2px 0px rgba(0,0,0,0.4), 0 0 6px ${colorInfo.glow}`;
+            }
+          } else {
+            cell.style.boxShadow = 'none';
+          }
+        }
+      }
+    }
+
+    function triggerScreenShake() {
+      const container = document.getElementById('gameBoardContainer');
+      container.classList.add('shake-active');
+      setTimeout(() => {
+        container.classList.remove('shake-active');
+      }, 300);
+    }
+
+    // ==========================================
+    // 5. ブロックの回転 & 形状処理
+    // ==========================================
+    function rotateMatrixClockwise(matrix) {
+      const rows = matrix.length;
+      const cols = matrix[0].length;
+      const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          rotated[c][rows - 1 - r] = matrix[r][c];
+        }
+      }
+      return rotated;
+    }
+
+    // ブロックを回転させる
+    function rotateSlotBlock(slotIndex) {
+      if (isGameOver || !isGameStarted || isBombModeActive) return;
+      const block = dockState[slotIndex];
+      if (!block) return;
+
+      const oldShape = block.shape;
+      const newShape = rotateMatrixClockwise(oldShape);
+
+      block.shape = newShape;
+      playSound('rotate');
+      checkDeployableState();
+      renderDock();
+    }
+
+    // ==========================================
+    // 6. ドックの補充 ＆ 描画
+    // ==========================================
+    function replenishDockIfNeeded() {
+      const allEmpty = dockState.every(b => b === null);
+      if (allEmpty) {
+        replenishDock();
+      }
+    }
+
+    function replenishDock() {
+      for (let i = 0; i < 3; i++) {
+        const preset = BLOCK_PRESETS[Math.floor(Math.random() * BLOCK_PRESETS.length)];
+        dockState[i] = {
+          shape: JSON.parse(JSON.stringify(preset.shape)),
+          color: preset.color,
+          isDeployable: true
+        };
+      }
+      playSound('shuffle');
+      checkDeployableState();
+      renderDock();
+    }
+
+    function renderDock() {
+      for (let s = 0; s < 3; s++) {
+        const slotEl = document.getElementById(`slot-${s}`);
+        slotEl.innerHTML = '';
+
+        const block = dockState[s];
+        if (!block) {
+          slotEl.classList.add('opacity-0');
+          slotEl.classList.remove('opacity-100');
+          slotEl.style.pointerEvents = 'none';
+          continue;
+        }
+
+        slotEl.classList.remove('opacity-0');
+        slotEl.classList.add('opacity-100');
+        slotEl.style.pointerEvents = 'auto';
+
+        if (!block.isDeployable) {
+          slotEl.classList.add('opacity-30', 'scale-90', 'grayscale');
+          slotEl.style.filter = 'grayscale(100%) opacity(0.3)';
+        } else {
+          slotEl.classList.remove('opacity-30', 'scale-90', 'grayscale');
+          slotEl.style.filter = 'none';
+        }
+
+        const shape = block.shape;
+        const rows = shape.length;
+        const cols = shape[0].length;
+        const colorInfo = COLORS[block.color] || COLORS.cyan;
+
+        const gridContainer = document.createElement('div');
+        gridContainer.style.display = 'grid';
+        gridContainer.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+        gridContainer.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+        gridContainer.style.gap = '2px';
+        gridContainer.className = "w-4/5 h-4/5 max-w-[80px] max-h-[80px] transition-transform duration-200";
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const cellVal = shape[r][c];
+            const cellEl = document.createElement('div');
+            // 表示崩れを防ぐため w-full h-full を付与
+            cellEl.className = "w-full h-full aspect-square rounded";
+            if (cellVal === 1) {
+              cellEl.className += ` ${colorInfo.bg} ${colorInfo.border} block-3d border`;
+              cellEl.style.boxShadow = `inset 1px 1px 0px rgba(255,255,255,0.4), inset -1px -1px 0px rgba(0,0,0,0.4), 0 0 3px ${colorInfo.glow}`;
+            } else {
+              cellEl.className += " bg-transparent";
+            }
+            gridContainer.appendChild(cellEl);
+          }
+        }
+        slotEl.appendChild(gridContainer);
+      }
+    }
+
+    // ==========================================
+    // 7. ゲームオーバー判定 (checkDeployableState)
+    // ==========================================
+    function checkDeployableState() {
+      let anyDeployable = false;
+
+      for (let s = 0; s < 3; s++) {
+        const block = dockState[s];
+        if (!block) continue;
+
+        const deployable = isShapePlaceableAnywhere(block.shape);
+        block.isDeployable = deployable;
+
+        if (deployable) {
+          anyDeployable = true;
+        }
+      }
+
+      const hasBlock = dockState.some(b => b !== null);
+      if (hasBlock && !anyDeployable) {
+        triggerGameOver();
+      }
+    }
+
+    function isShapePlaceableAnywhere(shape) {
+      const sRows = shape.length;
+      const sCols = shape[0].length;
+
+      for (let r = 0; r <= BOARD_SIZE - sRows; r++) {
+        for (let c = 0; c <= BOARD_SIZE - sCols; c++) {
+          if (canPlaceShapeAt(shape, r, c)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function canPlaceShapeAt(shape, startRow, startCol) {
+      const sRows = shape.length;
+      const sCols = shape[0].length;
+
+      for (let r = 0; r < sRows; r++) {
+        for (let c = 0; c < sCols; c++) {
+          if (shape[r][c] === 1) {
+            const targetRow = startRow + r;
+            const targetCol = startCol + c;
+
+            if (targetRow < 0 || targetRow >= BOARD_SIZE || targetCol < 0 || targetCol >= BOARD_SIZE) {
+              return false;
+            }
+            if (boardState[targetRow][targetCol] !== 0) {
+              return false;
+            }
+          }
+        }
+      }
+      return true;
+    }
+
+    // ==========================================
+    // 8. ドラッグ＆ドロップ実装 (Pointer Events)
+    // ==========================================
+    function initDragAndDrop() {
+      const slots = document.querySelectorAll('.dock-slot');
+      
+      slots.forEach(slot => {
+        slot.addEventListener('pointerdown', (e) => {
+          if (isGameOver || !isGameStarted || isBombModeActive) return;
+          const slotIndex = parseInt(slot.dataset.slot, 10);
+          const block = dockState[slotIndex];
+
+          if (!block || !block.isDeployable) return;
+
+          playSound('select');
+
+          dragInfo.isDragging = true;
+          dragInfo.slotIndex = slotIndex;
+          dragInfo.pointerId = e.pointerId;
+          slot.setPointerCapture(e.pointerId);
+
+          const rect = slot.getBoundingClientRect();
+          dragInfo.startX = e.clientX;
+          dragInfo.startY = e.clientY;
+
+          createDragClone(block, rect.width, rect.height);
+          updateDragClonePosition(e.clientX, e.clientY);
+        });
+
+        slot.addEventListener('pointermove', (e) => {
+          if (!dragInfo.isDragging || dragInfo.pointerId !== e.pointerId) return;
+          
+          updateDragClonePosition(e.clientX, e.clientY);
+          highlightPotentialPlacement(e.clientX, e.clientY);
+        });
+
+        slot.addEventListener('pointerup', (e) => {
+          if (!dragInfo.isDragging || dragInfo.pointerId !== e.pointerId) return;
+          slot.releasePointerCapture(e.pointerId);
+          
+          finalizePlacement(e.clientX, e.clientY);
+        });
+
+        slot.addEventListener('pointercancel', (e) => {
+          if (!dragInfo.isDragging) return;
+          resetDragState();
+        });
+      });
+    }
+
+    const dragContainer = document.getElementById('dragContainer');
+
+    function createDragClone(block, width, height) {
+      dragContainer.innerHTML = '';
+      dragContainer.classList.remove('hidden');
+
+      const shape = block.shape;
+      const rows = shape.length;
+      const cols = shape[0].length;
+      const colorInfo = COLORS[block.color] || COLORS.cyan;
+
+      const gridContainer = document.createElement('div');
+      gridContainer.style.display = 'grid';
+      gridContainer.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+      gridContainer.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      gridContainer.style.gap = '3px';
+
+      const isTouch = window.matchMedia('(pointer: coarse)').matches;
+      const cellSize = isTouch ? '36px' : '30px';
+
+      gridContainer.style.width = `calc(${cols} * ${cellSize})`;
+      gridContainer.style.height = `calc(${rows} * ${cellSize})`;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cellVal = shape[r][c];
+          const cellEl = document.createElement('div');
+          cellEl.className = "w-full h-full aspect-square rounded shadow-lg";
+          if (cellVal === 1) {
+            cellEl.className += ` ${colorInfo.bg} ${colorInfo.border} block-3d border-2`;
+            cellEl.style.boxShadow = `inset 2px 2px 0px rgba(255,255,255,0.4), inset -2px -2px 0px rgba(0,0,0,0.4), 0 0 10px ${colorInfo.glow}`;
+          } else {
+            cellEl.className += " bg-transparent";
+          }
+          gridContainer.appendChild(cellEl);
+        }
+      }
+      dragContainer.appendChild(gridContainer);
+    }
+
+    function updateDragClonePosition(clientX, clientY) {
+      const isTouch = window.matchMedia('(pointer: coarse)').matches;
+      const offsetY = isTouch ? -75 : -15;
+
+      dragContainer.style.left = `${clientX}px`;
+      dragContainer.style.top = `${clientY + offsetY}px`;
+    }
+
+    function highlightPotentialPlacement(clientX, clientY) {
+      clearBoardHighlights();
+
+      const cellCoord = getTargetBoardCell(clientX, clientY);
+      if (!cellCoord) return;
+
+      const { row, col } = cellCoord;
+      const block = dockState[dragInfo.slotIndex];
+      if (!block) return;
+
+      if (canPlaceShapeAt(block.shape, row, col)) {
+        highlightPlacementArea(block.shape, row, col, block.color);
+      }
+    }
+
+    function getTargetBoardCell(clientX, clientY) {
+      const boardRect = boardEl.getBoundingClientRect();
+      
+      if (clientX < boardRect.left || clientX > boardRect.right ||
+          clientY < boardRect.top || clientY > boardRect.bottom) {
+        return null;
+      }
+
+      const cellWidth = boardRect.width / BOARD_SIZE;
+      const cellHeight = boardRect.height / BOARD_SIZE;
+
+      const isTouch = window.matchMedia('(pointer: coarse)').matches;
+      const offsetY = isTouch ? -75 : -15;
+
+      const targetX = clientX - boardRect.left;
+      const targetY = (clientY + offsetY) - boardRect.top;
+
+      if (targetX < 0 || targetX >= boardRect.width || targetY < 0 || targetY >= boardRect.height) {
+        return null;
+      }
+
+      const block = dockState[dragInfo.slotIndex];
+      const sRows = block.shape.length;
+      const sCols = block.shape[0].length;
+
+      const col = Math.floor(targetX / cellWidth) - Math.floor(sCols / 2);
+      const row = Math.floor(targetY / cellHeight) - Math.floor(sRows / 2);
+
+      if (row < 0 || row + sRows > BOARD_SIZE || col < 0 || col + sCols > BOARD_SIZE) {
+        return null;
+      }
+
+      return { row, col };
+    }
+
+    function highlightPlacementArea(shape, startRow, startCol, colorCode) {
+      const colorInfo = COLORS[colorCode] || COLORS.cyan;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[0].length; c++) {
+          if (shape[r][c] === 1) {
+            const cell = document.getElementById(`cell-${startRow + r}-${startCol + c}`);
+            if (cell) {
+              cell.classList.add('bg-white/30', 'scale-95');
+              cell.style.boxShadow = `0 0 15px ${colorInfo.glow}`;
+            }
+          }
+        }
+      }
+    }
+
+    function clearBoardHighlights() {
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const cell = document.getElementById(`cell-${r}-${c}`);
+          if (cell && boardState[r][c] === 0) {
+            cell.className = "w-full h-full rounded-md bg-slate-900 border border-slate-950 transition-all duration-150 flex items-center justify-center relative overflow-hidden";
+            cell.style.boxShadow = 'none';
+          }
+        }
+      }
+    }
+
+    function finalizePlacement(clientX, clientY) {
+      const cellCoord = getTargetBoardCell(clientX, clientY);
+      const slotIndex = dragInfo.slotIndex;
+      const block = dockState[slotIndex];
+
+      if (cellCoord && block) {
+        const { row, col } = cellCoord;
+
+        if (canPlaceShapeAt(block.shape, row, col)) {
+          let placedCellsCount = 0;
+          for (let r = 0; r < block.shape.length; r++) {
+            for (let c = 0; c < block.shape[0].length; c++) {
+              if (block.shape[r][c] === 1) {
+                boardState[row + r][col + c] = block.color;
+                placedCellsCount++;
+              }
+            }
+          }
+
+          dockState[slotIndex] = null;
+          addScore(placedCellsCount, "BLOCK PLACE!");
+          playSound('place');
+          
+          const boardRect = boardEl.getBoundingClientRect();
+          const cellWidth = boardRect.width / BOARD_SIZE;
+          const cellHeight = boardRect.height / BOARD_SIZE;
+          for (let r = 0; r < block.shape.length; r++) {
+            for (let c = 0; c < block.shape[0].length; c++) {
+              if (block.shape[r][c] === 1) {
+                const px = boardRect.left + (col + c + 0.5) * cellWidth;
+                const py = boardRect.top + (row + r + 0.5) * cellHeight;
+                spawnParticles(px, py, block.color, 6);
+              }
+            }
+          }
+
+          checkAndClearLines();
+
+          renderBoard();
+          replenishDockIfNeeded();
+          checkDeployableState();
+          renderDock();
+        }
+      }
+
+      resetDragState();
+    }
+
+    function resetDragState() {
+      dragInfo.isDragging = false;
+      dragInfo.slotIndex = null;
+      dragInfo.pointerId = null;
+      dragContainer.classList.add('hidden');
+      dragContainer.innerHTML = '';
+      clearBoardHighlights();
+    }
+
+    // ==========================================
+    // 9. ライン消去とコンボ処理
+    // ==========================================
+    function checkAndClearLines() {
+      let rowsToClear = [];
+      let colsToClear = [];
+
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        let isFull = true;
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (boardState[r][c] === 0) {
+            isFull = false;
+            break;
+          }
+        }
+        if (isFull) rowsToClear.push(r);
+      }
+
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        let isFull = true;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          if (boardState[r][c] === 0) {
+            isFull = false;
+            break;
+          }
+        }
+        if (isFull) colsToClear.push(c);
+      }
+
+      const totalLines = rowsToClear.length + colsToClear.length;
+      if (totalLines > 0) {
+        const lineBonus = totalLines * 100 * totalLines;
+        
+        const boardRect = boardEl.getBoundingClientRect();
+        const cellWidth = boardRect.width / BOARD_SIZE;
+        const cellHeight = boardRect.height / BOARD_SIZE;
+
+        rowsToClear.forEach(r => {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            const colorCode = boardState[r][c];
+            const px = boardRect.left + (c + 0.5) * cellWidth;
+            const py = boardRect.top + (r + 0.5) * cellHeight;
+            spawnParticles(px, py, colorCode, 15);
+          }
+        });
+
+        colsToClear.forEach(c => {
+          for (let r = 0; r < BOARD_SIZE; r++) {
+            if (rowsToClear.includes(r)) continue;
+            const colorCode = boardState[r][c];
+            const px = boardRect.left + (c + 0.5) * cellWidth;
+            const py = boardRect.top + (r + 0.5) * cellHeight;
+            spawnParticles(px, py, colorCode, 15);
+          }
+        });
+
+        rowsToClear.forEach(r => {
+          for (let c = 0; c < BOARD_SIZE; c++) boardState[r][c] = 0;
+        });
+        colsToClear.forEach(c => {
+          for (let r = 0; r < BOARD_SIZE; r++) boardState[r][c] = 0;
+        });
+
+        playSound('blast');
+        triggerScreenShake();
+
+        const midX = boardRect.left + boardRect.width / 2;
+        const midY = boardRect.top + boardRect.height / 2;
+        const message = totalLines > 1 ? `${totalLines} COMBO!! +${lineBonus}` : `LINE CLEAR! +${lineBonus}`;
+        spawnFloatingText(midX, midY - 20, message, '#f43f5e');
+
+        addScore(lineBonus, `${totalLines}ライン消去！`);
+      }
+    }
+
+    function addScore(points, reason = "") {
+      score += points;
+      document.getElementById('scoreVal').textContent = score;
+
+      if (score > bestScore) {
+        bestScore = score;
+        document.getElementById('bestScoreVal').textContent = bestScore;
+        localStorage.setItem('block_blast_dx_best', bestScore);
+      }
+    }
+
+    // ==========================================
+    // 10. お助けアイテムの処理 (ボム & シャッフル)
+    // ==========================================
+    const bombBtn = document.getElementById('itemBombBtn');
+    const shuffleBtn = document.getElementById('itemShuffleBtn');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+
+    bombBtn.addEventListener('click', () => {
+      if (isGameOver || !isGameStarted) return;
+      if (items.bomb <= 0) return;
+
+      isBombModeActive = !isBombModeActive;
+
+      if (isBombModeActive) {
+        bombBtn.classList.add('bg-red-700/80', 'border-red-400');
+        statusIndicator.classList.remove('opacity-0');
+        statusIndicator.classList.add('opacity-100');
+        statusText.textContent = "ボム：破壊する中心のマスをタップしてください";
+      } else {
+        deactivateBombMode();
+      }
+    });
+
+    function deactivateBombMode() {
+      isBombModeActive = false;
+      bombBtn.classList.remove('bg-red-700/80', 'border-red-400');
+      statusIndicator.classList.remove('opacity-100');
+      statusIndicator.classList.add('opacity-0');
+    }
+
+    function handleCellClickForBomb(row, col) {
+      if (!isBombModeActive || items.bomb <= 0) return;
+
+      items.bomb--;
+      document.getElementById('bombCount').textContent = items.bomb;
+      playSound('bomb');
+
+      const boardRect = boardEl.getBoundingClientRect();
+      const cellWidth = boardRect.width / BOARD_SIZE;
+      const cellHeight = boardRect.height / BOARD_SIZE;
+
+      for (let r = row - 1; r <= row + 1; r++) {
+        for (let c = col - 1; c <= col + 1; c++) {
+          if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+            const colorCode = boardState[r][c];
+            if (colorCode !== 0) {
+              const px = boardRect.left + (c + 0.5) * cellWidth;
+              const py = boardRect.top + (r + 0.5) * cellHeight;
+              spawnParticles(px, py, colorCode, 12);
+              boardState[r][c] = 0;
+            }
+          }
+        }
+      }
+
+      const centerX = boardRect.left + (col + 0.5) * cellWidth;
+      const centerY = boardRect.top + (row + 0.5) * cellHeight;
+      spawnParticles(centerX, centerY, 'red', 40);
+      spawnFloatingText(centerX, centerY - 15, "BOMB BLAST!", '#ef4444');
+
+      triggerScreenShake();
+      deactivateBombMode();
+      
+      renderBoard();
+      checkDeployableState();
+      renderDock();
+
+      if (items.bomb === 0) {
+        bombBtn.classList.add('opacity-50', 'pointer-events-none');
+      }
+    }
+
+    shuffleBtn.addEventListener('click', () => {
+      if (isGameOver || !isGameStarted || isBombModeActive) return;
+      if (items.shuffle <= 0) return;
+
+      items.shuffle--;
+      document.getElementById('shuffleCount').textContent = items.shuffle;
+
+      replenishDock();
+
+      if (items.shuffle === 0) {
+        shuffleBtn.classList.add('opacity-50', 'pointer-events-none');
+      }
+    });
+
+    // ==========================================
+    // 11. ゲームの開始 / リセット / ゲームオーバー
+    // ==========================================
+    const overlay = document.getElementById('overlay');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDesc = document.getElementById('modalDesc');
+    const modalScoreBox = document.getElementById('modalScoreBox');
+    const modalScore = document.getElementById('modalScore');
+    const newBestBadge = document.getElementById('newBestBadge');
+    const modalActionBtn = document.getElementById('modalActionBtn');
+
+    function initGame() {
+      createBoardCells();
+      document.getElementById('bestScoreVal').textContent = bestScore;
+      showOverlay(true, "BLOCK BLAST DX", "回転機能＆お助けボム搭載デラックスエディションへようこそ！", "ゲームスタート");
+    }
+
+    function startNewGame() {
+      boardState = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+      score = 0;
+      isGameOver = false;
+      isGameStarted = true;
+
+      items = { bomb: 2, shuffle: 2 };
+      document.getElementById('bombCount').textContent = items.bomb;
+      document.getElementById('shuffleCount').textContent = items.shuffle;
+      
+      bombBtn.classList.remove('opacity-50', 'pointer-events-none');
+      shuffleBtn.classList.remove('opacity-50', 'pointer-events-none');
+
+      document.getElementById('scoreVal').textContent = "0";
+
+      renderBoard();
+
+      dockState = [null, null, null];
+      replenishDock();
+
+      overlay.classList.add('hidden');
+    }
+
+    function triggerGameOver() {
+      isGameOver = true;
+      isGameStarted = false;
+      playSound('gameover');
+
+      const isNewBest = score >= bestScore;
+      if (isNewBest) {
+        bestScore = score;
+        localStorage.setItem('block_blast_dx_best', bestScore);
+        newBestBadge.classList.remove('hidden');
+      } else {
+        newBestBadge.classList.add('hidden');
+      }
+
+      modalScore.textContent = score;
+      modalScoreBox.classList.remove('hidden');
+
+      showOverlay(false, "GAME OVER", "もうブロックを配置する場所がありません！", "もう一度挑戦する");
+    }
+
+    function showOverlay(isStart, title, desc, btnText) {
+      modalTitle.textContent = title;
+      modalDesc.textContent = desc;
+      modalActionBtn.textContent = btnText;
+
+      if (isStart) {
+        modalScoreBox.classList.add('hidden');
+      } else {
+        modalScoreBox.classList.remove('hidden');
+      }
+
+      overlay.classList.remove('hidden');
+    }
+
+    modalActionBtn.addEventListener('click', () => {
+      // ユーザー操作時に安全にオーディオを起動
+      initAudio();
+      startNewGame();
+    });
+
+    // ==========================================
+    // 12. ヘルプモーダル & UIイベント
+    // ==========================================
+    const helpBtn = document.getElementById('helpBtn');
+    const helpModal = document.getElementById('helpModal');
+    const closeHelpBtn = document.getElementById('closeHelpBtn');
+
+    helpBtn.addEventListener('click', () => {
+      helpModal.classList.remove('hidden');
+    });
+
+    closeHelpBtn.addEventListener('click', () => {
+      helpModal.classList.add('hidden');
+    });
+
+    const muteBtn = document.getElementById('muteBtn');
+    const muteIcon = document.getElementById('muteIcon');
+    muteBtn.addEventListener('click', () => {
+      isMuted = !isMuted;
+      if (isMuted) {
+        muteIcon.className = "fas fa-volume-mute text-gray-500";
+      } else {
+        muteIcon.className = "fas fa-volume-up text-blue-400";
+        initAudio();
+        playSound('select');
+      }
+    });
+
+    document.querySelectorAll('.rotate-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const slotIdx = parseInt(btn.dataset.slot, 10);
+        rotateSlotBlock(slotIdx);
+      });
+    });
+
+    document.querySelectorAll('.dock-slot').forEach(slot => {
+      slot.addEventListener('click', (e) => {
+        if (!dragInfo.isDragging) {
+          const slotIdx = parseInt(slot.dataset.slot, 10);
+          rotateSlotBlock(slotIdx);
+        }
+      });
+    });
+
+    window.onload = function() {
+      initGame();
+      initDragAndDrop();
+    };
+
+  </script>
+</body>
+</html>
