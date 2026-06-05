@@ -3,253 +3,385 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Block Blast Deluxe - ネオンパズル</title>
+  <title>Block Blast DX - Premium Cyber Edition</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome for Icons -->
+  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
-    /* モバイルでのタッチスクロールや3Dタッチ等のデフォルト挙動を抑制 */
     body {
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
-      background-color: #0b0f19;
+      background-color: #060913;
+      font-family: 'Inter', sans-serif;
     }
-    /* 各スロットでブラウザスクロールを無効化しタッチドラッグを確実に作動させる */
     .dock-slot {
       touch-action: none;
     }
-    /* ネオングロー効果 */
+    /* ネオンビジュアルと各種シャドウ効果 */
     .neon-text-blue {
-      text-shadow: 0 0 5px rgba(59, 130, 246, 0.5), 0 0 15px rgba(59, 130, 246, 0.7);
+      text-shadow: 0 0 5px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.8);
     }
     .neon-text-pink {
-      text-shadow: 0 0 5px rgba(236, 72, 153, 0.5), 0 0 15px rgba(236, 72, 153, 0.7);
+      text-shadow: 0 0 5px rgba(236, 72, 153, 0.6), 0 0 15px rgba(236, 72, 153, 0.8);
+    }
+    .neon-text-amber {
+      text-shadow: 0 0 5px rgba(245, 158, 11, 0.6), 0 0 15px rgba(245, 158, 11, 0.8);
     }
     .neon-border-purple {
-      box-shadow: 0 0 10px rgba(168, 85, 247, 0.4), inset 0 0 10px rgba(168, 85, 247, 0.2);
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.3), inset 0 0 10px rgba(168, 85, 247, 0.1);
     }
-    /* 3Dブロック風の陰影 */
     .block-3d {
-      box-shadow: inset 3px 3px 0px rgba(255, 255, 255, 0.3),
-                  inset -3px -3px 0px rgba(0, 0, 0, 0.4);
+      box-shadow: inset 3px 3px 0px rgba(255, 255, 255, 0.25),
+                  inset -3px -3px 0px rgba(0, 0, 0, 0.45);
     }
-    /* シェイクアニメーションクラス */
+    /* フィーバーモード時のレインボーパルス背景 */
+    @keyframes feverBg {
+      0% { background-color: #0d061a; }
+      33% { background-color: #06111a; }
+      66% { background-color: #1a0614; }
+      100% { background-color: #0d061a; }
+    }
+    .fever-active-bg {
+      animation: feverBg 4s infinite linear;
+    }
+    /* カメラシェイク効果 */
     @keyframes shake {
       0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      10% { transform: translate(-3px, 2px) rotate(-0.5deg); }
-      20% { transform: translate(2px, -3px) rotate(1deg); }
-      30% { transform: translate(-1px, 1px) rotate(0deg); }
-      40% { transform: translate(3px, 2px) rotate(0.5deg); }
-      50% { transform: translate(-2px, -1px) rotate(-1deg); }
-      60% { transform: translate(1px, 3px) rotate(0deg); }
-      70% { transform: translate(-3px, -2px) rotate(1deg); }
-      80% { transform: translate(2px, 1px) rotate(-0.5deg); }
-      90% { transform: translate(-1px, -2px) rotate(0deg); }
+      10% { transform: translate(-4px, 3px) rotate(-1deg); }
+      20% { transform: translate(3px, -4px) rotate(1deg); }
+      30% { transform: translate(-2px, 2px) rotate(0deg); }
+      40% { transform: translate(4px, 3px) rotate(1deg); }
+      50% { transform: translate(-3px, -2px) rotate(-1deg); }
+      60% { transform: translate(2px, 4px) rotate(0deg); }
+      70% { transform: translate(-4px, -3px) rotate(1deg); }
+      80% { transform: translate(3px, 2px) rotate(-1deg); }
+      90% { transform: translate(-2px, -3px) rotate(0deg); }
     }
     .shake-active {
-      animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+      animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    /* カットイン演出フェードアニメーション */
+    @keyframes bannerPop {
+      0% { transform: scale(0.5) rotate(-5deg); opacity: 0; }
+      50% { transform: scale(1.1) rotate(2deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .banner-active {
+      animation: bannerPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
   </style>
 </head>
-<body class="w-full h-screen overflow-hidden flex flex-col items-center justify-between p-3 text-white">
+<body id="gameBody" class="w-full h-screen overflow-hidden flex flex-col items-center justify-between p-1.5 pb-2 text-white transition-all duration-500 max-h-screen">
 
-  <!-- パーティクル＆エフェクト用キャンバス（画面最前面に重ねる） -->
+  <!-- パーティクル＆エフェクト用キャンバス -->
   <canvas id="effectsCanvas" class="absolute top-0 left-0 w-full h-full pointer-events-none z-40"></canvas>
 
-  <!-- ヘッダーUI -->
-  <header class="w-full max-w-md flex justify-between items-center z-10 py-1">
-    <div>
-      <h1 class="text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-        BLOCK BLAST <span class="text-xs px-1.5 py-0.5 rounded bg-pink-600 text-white font-bold ml-1">DX</span>
-      </h1>
-      <p class="text-xs text-gray-400">回転 &amp; アイテムを駆使せよ！</p>
+  <!-- ヘッダーUIパネル（余白を詰めコンパクト化） -->
+  <header class="w-full max-w-md flex justify-between items-center z-10 py-0.5 px-1">
+    <div class="flex flex-col">
+      <div class="flex items-center gap-1">
+        <h1 class="text-lg font-black tracking-wider bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+          BLOCK BLAST
+        </h1>
+        <span class="text-[7px] px-1 py-0.1 rounded bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black">DX</span>
+      </div>
+      <!-- モードインジケータ -->
+      <span id="currentModeLabel" class="text-[8px] text-purple-400 font-bold tracking-widest uppercase">CLASSIC MODE</span>
     </div>
     
-    <div class="flex items-center gap-3">
-      <!-- ミュートボタン -->
-      <button id="muteBtn" class="w-9 h-9 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center hover:bg-gray-700 transition">
-        <i id="muteIcon" class="fas fa-volume-up text-blue-400"></i>
+    <!-- コインとユーティリティ -->
+    <div class="flex items-center gap-1">
+      <!-- コイン表示 -->
+      <div class="flex items-center gap-1 bg-slate-900/90 border border-slate-800 rounded-full px-2 py-0.5 text-[10px] font-bold text-yellow-400 shadow-lg">
+        <i class="fas fa-coins text-amber-400 animate-pulse text-[8px]"></i>
+        <span id="coinVal">100</span>
+      </div>
+      <!-- 設定類 -->
+      <button id="muteBtn" class="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center hover:bg-slate-800 transition">
+        <i id="muteIcon" class="fas fa-volume-up text-blue-400 text-[10px]"></i>
       </button>
-      <!-- ヘルプボタン -->
-      <button id="helpBtn" class="w-9 h-9 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center hover:bg-gray-700 transition">
-        <i class="fas fa-question text-purple-400"></i>
+      <button id="helpBtn" class="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center hover:bg-slate-800 transition">
+        <i class="fas fa-question text-purple-400 text-[10px]"></i>
       </button>
     </div>
   </header>
 
-  <!-- スコア＆ハイスコア表示 -->
-  <section class="w-full max-w-md grid grid-cols-2 gap-3 z-10">
-    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-2.5 text-center neon-border-purple">
-      <span class="text-xs text-gray-400 uppercase tracking-widest block mb-0.5">SCORE</span>
-      <span id="scoreVal" class="text-2xl font-black text-blue-400 neon-text-blue">0</span>
+  <!-- スコア＆情報表示領域（さらにスリム化） -->
+  <section class="w-full max-w-md grid grid-cols-3 gap-1 z-10 px-1">
+    <div class="bg-gray-950/80 border border-gray-900 rounded-xl py-0.5 px-1 text-center neon-border-purple flex flex-col justify-center">
+      <span class="text-[7px] text-gray-400 uppercase tracking-widest block">SCORE</span>
+      <span id="scoreVal" class="text-base font-extrabold text-blue-400 neon-text-blue leading-tight">0</span>
     </div>
-    <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-2.5 text-center">
-      <span class="text-xs text-gray-400 uppercase tracking-widest block mb-0.5">BEST SCORE</span>
-      <span id="bestScoreVal" class="text-2xl font-black text-pink-400 neon-text-pink">0</span>
+    
+    <!-- モード別・中央特殊パネル (タイマー、またはアドベンチャーステージ数) -->
+    <div id="midInfoPanel" class="bg-gray-950/80 border border-gray-900 rounded-xl py-0.5 px-1 text-center flex flex-col justify-center">
+      <span id="midInfoTitle" class="text-[7px] text-gray-400 uppercase tracking-widest block">BEST SCORE</span>
+      <span id="midInfoValue" class="text-base font-extrabold text-pink-400 neon-text-pink leading-tight">0</span>
+    </div>
+
+    <div class="bg-gray-950/80 border border-gray-900 rounded-xl py-0.5 px-1 text-center flex flex-col justify-center">
+      <span class="text-[7px] text-gray-400 uppercase tracking-widest block">MULTIPLIER</span>
+      <span id="multiplierVal" class="text-base font-extrabold text-amber-400 neon-text-amber leading-tight">x1.0</span>
     </div>
   </section>
 
-  <!-- お助けアイテム枠 (Items Area) -->
-  <section class="w-full max-w-md flex justify-around items-center bg-gray-900/60 border border-gray-800/80 rounded-xl p-2 z-10 my-1">
-    <!-- ボムアイテム -->
-    <button id="itemBombBtn" class="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-lg bg-gray-800/80 border border-red-900/50 hover:bg-gray-700/80 transition group active:scale-95">
-      <div class="flex items-center gap-2">
-        <i class="fas fa-bomb text-red-500 text-lg group-hover:animate-bounce"></i>
-        <span class="text-xs font-bold text-red-300">ボム爆破</span>
-      </div>
-      <span id="bombCount" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full border border-red-400 shadow-md">2</span>
-      <p class="text-[9px] text-gray-400">盤面3x3を消去</p>
-    </button>
-
-    <!-- シャッフルアイテム -->
-    <button id="itemShuffleBtn" class="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-lg bg-gray-800/80 border border-amber-900/50 hover:bg-gray-700/80 transition group active:scale-95">
-      <div class="flex items-center gap-2">
-        <i class="fas fa-random text-amber-500 text-lg group-hover:rotate-180 transition-transform duration-500"></i>
-        <span class="text-xs font-bold text-amber-300">シャッフル</span>
-      </div>
-      <span id="shuffleCount" class="absolute -top-1.5 -right-1.5 bg-amber-600 text-white font-extrabold text-[10px] px-1.5 py-0.5 rounded-full border border-amber-400 shadow-md">2</span>
-      <p class="text-[9px] text-gray-400">ドックを全入替</p>
-    </button>
-  </section>
-
-  <!-- ゲームメッセージ / ボム動作状態指示器 -->
-  <div id="statusIndicator" class="h-6 flex items-center justify-center text-xs font-semibold text-purple-300 z-10 transition-all duration-300 opacity-0 transform translate-y-1">
-    <i class="fas fa-info-circle mr-1.5"></i> <span id="statusText">ボム：破壊するマスをタップしてください</span>
+  <!-- フィーバーゲージ (Fever Time Mode専用。他モード時は非表示または装飾) -->
+  <div id="feverBarContainer" class="w-full max-w-md h-1 bg-slate-950 rounded-full border border-slate-800/80 overflow-hidden relative z-10 hidden">
+    <div id="feverBar" class="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 w-0 transition-all duration-300"></div>
   </div>
 
-  <!-- メインゲーム盤面コンテナ (8x8 Grid) -->
-  <main id="gameBoardContainer" class="w-full max-w-md aspect-square bg-slate-950 rounded-2xl p-2 border-2 border-slate-800 shadow-2xl relative z-20 flex items-center justify-center">
+  <!-- アイテムショップ枠（高さ圧縮） -->
+  <section class="w-full max-w-md flex justify-between items-center bg-gray-950/60 border border-slate-900/80 rounded-xl p-1 z-10">
+    <!-- ボム (周囲3x3爆破) -->
+    <button id="itemBombBtn" class="flex-1 flex flex-col items-center py-0.5 rounded-lg bg-slate-900/50 hover:bg-slate-900 border border-red-955/30 hover:border-red-500/50 transition active:scale-95 group">
+      <div class="flex items-center gap-1">
+        <i class="fas fa-bomb text-red-500 text-[10px] group-hover:animate-bounce"></i>
+        <span class="text-[9px] font-extrabold text-red-300">ボム爆破</span>
+      </div>
+      <div class="flex items-center gap-0.5 text-[7px] bg-red-95/40 px-1 rounded text-red-400">
+        <i class="fas fa-coins text-[6px]"></i> <span>30</span>
+      </div>
+    </button>
+
+    <!-- シャッフル (ドック総入れ替え) -->
+    <button id="itemShuffleBtn" class="flex-1 flex flex-col items-center py-0.5 rounded-lg bg-slate-900/50 hover:bg-slate-900 border border-amber-955/30 hover:border-amber-500/50 transition active:scale-95 group mx-1">
+      <div class="flex items-center gap-1">
+        <i class="fas fa-random text-amber-500 text-[10px] group-hover:rotate-180 transition-transform duration-500"></i>
+        <span class="text-[9px] font-extrabold text-amber-300">シャッフル</span>
+      </div>
+      <div class="flex items-center gap-0.5 text-[7px] bg-amber-95/40 px-1 rounded text-amber-400">
+        <i class="fas fa-coins text-[6px]"></i> <span>15</span>
+      </div>
+    </button>
+
+    <!-- 1x1お助けブロック (ドックの空きへ1x1ブロックを召喚) -->
+    <button id="itemSingleBtn" class="flex-1 flex flex-col items-center py-0.5 rounded-lg bg-slate-900/50 hover:bg-slate-900 border border-blue-955/30 hover:border-blue-500/50 transition active:scale-95 group">
+      <div class="flex items-center gap-1">
+        <i class="fas fa-cube text-blue-500 text-[10px] group-hover:scale-110 transition-transform"></i>
+        <span class="text-[9px] font-extrabold text-blue-300">1x1召喚</span>
+      </div>
+      <div class="flex items-center gap-0.5 text-[7px] bg-blue-95/40 px-1 rounded text-blue-400">
+        <i class="fas fa-coins text-[6px]"></i> <span>40</span>
+      </div>
+    </button>
+  </section>
+
+  <!-- ゲーム状態表示 -->
+  <div id="statusIndicator" class="h-3.5 flex items-center justify-center text-[9px] font-semibold text-purple-300 z-10 transition-all duration-300 opacity-0 transform translate-y-1">
+    <i class="fas fa-info-circle mr-1"></i> <span id="statusText">ボム：配置するマスをタップしてください</span>
+  </div>
+
+  <!-- メインゲーム盤面コンテナ (制限をmax-w-[min(100vw-2rem,100vh-280px)]へと大幅に拡張し、限界まで巨大化) -->
+  <main id="gameBoardContainer" class="w-full max-w-[min(100vw-1.5rem,100vh-280px)] aspect-square bg-slate-950 rounded-2xl p-1 border-2 border-slate-900 shadow-2xl relative z-20 flex items-center justify-center transition-all">
     <div id="board" class="grid grid-cols-8 grid-rows-8 gap-1 w-full h-full relative">
-      <!-- JavaScriptで動的に8x8のマス目を生成 -->
+      <!-- JSにより動的に8x8マスを生成 -->
     </div>
   </main>
 
-  <!-- ドック操作説明テキスト -->
-  <div class="text-[10px] text-gray-500 text-center select-none z-10 my-1">
-    <i class="fas fa-sync-alt mr-1"></i> ブロックをタップ（または下のボタン）で回転 / ドラッグで配置
+  <!-- 豪華演出用中央カットインバナー -->
+  <div id="bannerCutIn" class="absolute inset-0 flex items-center justify-center pointer-events-none z-30 hidden">
+    <div class="bg-gradient-to-r from-pink-600/90 via-purple-600/90 to-blue-600/90 border-y border-pink-400 py-2.5 px-6 shadow-2xl backdrop-blur-sm rounded-xl text-center transform scale-0 opacity-0 transition-all duration-300">
+      <h3 id="bannerText" class="text-xl font-black italic tracking-widest text-white drop-shadow-md">COMBO!!</h3>
+      <p id="bannerSubText" class="text-[9px] text-purple-100 font-bold uppercase tracking-wider mt-0.5">Mega score added</p>
+    </div>
   </div>
 
-  <!-- ドックエリア (Dock Slots & Rotate Controls) -->
-  <section class="w-full max-w-md flex flex-col gap-2 z-20 pb-4">
-    <!-- スロットコンテナ -->
-    <div class="grid grid-cols-3 gap-2.5 items-stretch">
+  <!-- ドック操作説明テキスト -->
+  <div class="text-[8px] text-slate-500 text-center select-none z-10 py-0.5">
+    <i class="fas fa-sync-alt mr-1"></i> ブロックをタップで「回転」 / ドラッグで「配置」
+  </div>
+
+  <!-- ドックエリア (手札スロットのブロックサイズ制限を max-w-[105px] / w-[95%] に拡大) -->
+  <section class="w-full max-w-md flex flex-col gap-0.5 z-20">
+    <div class="grid grid-cols-3 gap-2 px-1">
       
       <!-- スロット 0 -->
-      <div class="flex flex-col items-center gap-1.5 bg-gray-900/50 border border-gray-800/60 rounded-xl p-1.5 relative">
+      <div class="flex flex-col items-center gap-1 bg-gray-950/40 border border-slate-900/60 rounded-xl p-1 relative">
         <div id="slot-0" class="dock-slot w-full aspect-square flex items-center justify-center relative select-none cursor-grab active:cursor-grabbing" data-slot="0">
           <!-- ブロックが描画される -->
         </div>
-        <button class="rotate-btn w-full py-1 text-[10px] font-bold bg-purple-950/60 border border-purple-800/40 rounded hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1 active:scale-95" data-slot="0">
-          <i class="fas fa-redo text-[8px] text-purple-400"></i> 回転
+        <button class="rotate-btn w-full py-0.5 text-[8px] font-bold bg-purple-950/40 hover:bg-purple-950/80 border border-purple-800/20 hover:border-purple-500/30 rounded text-purple-300 transition-all flex items-center justify-center gap-0.5 active:scale-95" data-slot="0">
+          <i class="fas fa-redo text-[6px]"></i> 回転
         </button>
       </div>
 
       <!-- スロット 1 -->
-      <div class="flex flex-col items-center gap-1.5 bg-gray-900/50 border border-gray-800/60 rounded-xl p-1.5 relative">
+      <div class="flex flex-col items-center gap-1 bg-gray-950/40 border border-slate-900/60 rounded-xl p-1 relative">
         <div id="slot-1" class="dock-slot w-full aspect-square flex items-center justify-center relative select-none cursor-grab active:cursor-grabbing" data-slot="1">
           <!-- ブロックが描画される -->
         </div>
-        <button class="rotate-btn w-full py-1 text-[10px] font-bold bg-purple-950/60 border border-purple-800/40 rounded hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1 active:scale-95" data-slot="1">
-          <i class="fas fa-redo text-[8px] text-purple-400"></i> 回転
+        <button class="rotate-btn w-full py-0.5 text-[8px] font-bold bg-purple-950/40 hover:bg-purple-950/80 border border-purple-800/20 hover:border-purple-500/30 rounded text-purple-300 transition-all flex items-center justify-center gap-0.5 active:scale-95" data-slot="1">
+          <i class="fas fa-redo text-[6px]"></i> 回転
         </button>
       </div>
 
       <!-- スロット 2 -->
-      <div class="flex flex-col items-center gap-1.5 bg-gray-900/50 border border-gray-800/60 rounded-xl p-1.5 relative">
+      <div class="flex flex-col items-center gap-1 bg-gray-950/40 border border-slate-900/60 rounded-xl p-1 relative">
         <div id="slot-2" class="dock-slot w-full aspect-square flex items-center justify-center relative select-none cursor-grab active:cursor-grabbing" data-slot="2">
           <!-- ブロックが描画される -->
         </div>
-        <button class="rotate-btn w-full py-1 text-[10px] font-bold bg-purple-950/60 border border-purple-800/40 rounded hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1 active:scale-95" data-slot="2">
-          <i class="fas fa-redo text-[8px] text-purple-400"></i> 回転
+        <button class="rotate-btn w-full py-0.5 text-[8px] font-bold bg-purple-950/40 hover:bg-purple-950/80 border border-purple-800/20 hover:border-purple-500/30 rounded text-purple-300 transition-all flex items-center justify-center gap-0.5 active:scale-95" data-slot="2">
+          <i class="fas fa-redo text-[6px]"></i> 回転
         </button>
       </div>
 
     </div>
   </section>
 
-  <!-- ドラッグ中のダミー要素表示コンテナ (スマホ操作時に指で隠れないようにオフセット描画するためのもの) -->
+  <!-- ドラッグ中の表示コンテナ -->
   <div id="dragContainer" class="fixed pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 hidden select-none"></div>
 
-  <!-- ゲームオーバー / スタート時 オーバーレイモーダル -->
-  <div id="overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-6 hidden">
-    <div class="bg-gray-900 border-2 border-purple-500 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl neon-border-purple relative overflow-hidden">
+  <!-- マスタースタートメニュー / ゲームオーバー 兼用モーダル -->
+  <div id="overlay" class="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-50 p-4">
+    <div class="bg-slate-900 border-2 border-purple-500/60 rounded-3xl p-5 max-w-sm w-full text-center shadow-2xl neon-border-purple relative overflow-hidden">
       
       <!-- 装飾バックグラウンド -->
-      <div class="absolute -top-12 -left-12 w-24 h-24 bg-pink-500/10 rounded-full blur-xl"></div>
-      <div class="absolute -bottom-12 -right-12 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+      <div class="absolute -top-12 -left-12 w-24 h-24 bg-pink-500/20 rounded-full blur-xl"></div>
+      <div class="absolute -bottom-12 -right-12 w-24 h-24 bg-blue-500/20 rounded-full blur-xl"></div>
 
-      <h2 id="modalTitle" class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 mb-2 tracking-wider">
-        BLOCK BLAST
+      <!-- ゲームロゴ -->
+      <h2 id="modalTitle" class="text-2xl font-black italic tracking-widest bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-1">
+        BLOCK BLAST DX
       </h2>
-      <p id="modalDesc" class="text-sm text-gray-400 mb-6">思考を巡らせて最高のスコアを目指せ！</p>
+      <p id="modalDesc" class="text-[10px] text-slate-400 mb-4 font-semibold uppercase tracking-wider">Premium Arcade Experience</p>
       
-      <!-- スコア表示（ゲームオーバー用） -->
-      <div id="modalScoreBox" class="bg-gray-950 border border-gray-800 rounded-2xl p-4 mb-6 hidden">
-        <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">あなたのスコア</div>
-        <div id="modalScore" class="text-4xl font-black text-blue-400 neon-text-blue">0</div>
-        <div id="newBestBadge" class="text-xs text-yellow-400 font-bold mt-2 animate-pulse hidden">
-          <i class="fas fa-trophy mr-1"></i> NEW BEST RECORD!
+      <!-- スコアリザルト表示 (ゲームオーバー用) -->
+      <div id="modalScoreBox" class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 mb-4 hidden">
+        <div id="modalResultTitle" class="text-[9px] text-slate-400 uppercase tracking-widest mb-1">FINAL SCORE</div>
+        <div id="modalScore" class="text-3xl font-black text-blue-400 neon-text-blue">0</div>
+        <div id="newBestBadge" class="text-xs text-yellow-400 font-extrabold mt-1 animate-bounce hidden">
+          <i class="fas fa-trophy mr-1 animate-spin"></i> NEW BEST RECORD!
         </div>
       </div>
 
-      <button id="modalActionBtn" class="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 font-bold text-lg shadow-lg active:scale-95 transition-all">
-        ゲームを始める
+      <!-- モード選択パネル (ゲーム開始前に選択させる) -->
+      <div id="modeSelectorPanel" class="flex flex-col gap-2 mb-4">
+        <p class="text-left text-[10px] text-slate-400 font-bold px-1 uppercase tracking-widest mb-0.5"><i class="fas fa-gamepad mr-1"></i> セレクト・ゲームモード</p>
+        
+        <!-- クラシック -->
+        <button id="selectClassicBtn" class="flex items-center gap-2.5 w-full p-2 rounded-xl border-2 border-purple-500 bg-purple-950/20 text-left hover:bg-purple-950/30 transition-all">
+          <div class="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400"><i class="fas fa-infinity text-sm"></i></div>
+          <div>
+            <h4 class="text-xs font-bold text-white">クラシック</h4>
+            <p class="text-[9px] text-slate-400">制限時間なしの無限思考パズル</p>
+          </div>
+        </button>
+
+        <!-- フィーバー -->
+        <button id="selectFeverBtn" class="flex items-center gap-2.5 w-full p-2 rounded-xl border border-slate-800 bg-slate-950 text-left hover:bg-slate-800/50 transition-all">
+          <div class="w-7 h-7 rounded-lg bg-pink-500/20 flex items-center justify-center text-pink-400"><i class="fas fa-bolt text-sm"></i></div>
+          <div>
+            <h4 class="text-xs font-bold text-white">フィーバータイム</h4>
+            <p class="text-[9px] text-slate-400">60秒以内！ラインを消して時間回復</p>
+          </div>
+        </button>
+
+        <!-- アドベンチャー -->
+        <button id="selectAdventureBtn" class="flex items-center gap-2.5 w-full p-2 rounded-xl border border-slate-800 bg-slate-950 text-left hover:bg-slate-800/50 transition-all">
+          <div class="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400"><i class="fas fa-map-marked-alt text-sm"></i></div>
+          <div>
+            <h4 class="text-xs font-bold text-white">アドベンチャー</h4>
+            <p class="text-[9px] text-slate-400">全10ステージ！盤面の氷ブロックを壊せ</p>
+          </div>
+        </button>
+      </div>
+
+      <!-- アクション開始ボタン -->
+      <button id="modalActionBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 font-black text-sm tracking-widest shadow-lg active:scale-95 transition-all uppercase">
+        クラシックを開始する
       </button>
     </div>
   </div>
 
-  <!-- ヘルプ・ルール説明モーダル -->
-  <div id="helpModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 hidden">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-xs w-full shadow-2xl text-sm relative">
-      <button id="closeHelpBtn" class="absolute top-3 right-3 text-gray-400 hover:text-white">
-        <i class="fas fa-times text-lg"></i>
-      </button>
-      <h3 class="text-lg font-bold text-blue-400 mb-4 border-b border-gray-800 pb-2"><i class="fas fa-info-circle mr-1.5"></i> 遊び方説明</h3>
-      <ul class="space-y-3 text-gray-300">
-        <li><b class="text-white">1. ブロック配置:</b> 下のドックからブロックをドラッグし、盤面の空きマスへ置いてください。</li>
-        <li><b class="text-white">2. 回転機能:</b> 各ブロックの下の「回転」ボタンを押すか、ブロック自体を軽くタップすると時計回りに回転します。</li>
-        <li><b class="text-white">3. ライン消去:</b> 縦・横一列が揃うとブロックが消え、マルチライン同時消去でコンボボーナスが加算されます。</li>
-        <li><b class="text-white">4. ゲームオーバー:</b> ドックに残ったどのブロックも盤面に置けなくなるとゲームオーバーです。</li>
-        <li><b class="text-white">5. お助けアイテム:</b> 
-          <ul class="list-disc pl-4 mt-1 space-y-1 text-xs text-gray-400">
-            <li><span class="text-red-400 font-bold">ボム</span>: 盤面の任意の3x3エリアを爆破。</li>
-            <li><span class="text-amber-400 font-bold">シャッフル</span>: 手札のブロックを全て入れ替え。</li>
-          </ul>
-        </li>
-      </ul>
+  <!-- ヘルプモーダル -->
+  <div id="helpModal" class="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-50 p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-xs w-full shadow-2xl text-[11px] relative">
+      <button id="closeHelpBtn" class="absolute top-3 right-3 text-slate-400 hover:text-white"><i class="fas fa-times text-base"></i></button>
+      <h3 class="text-sm font-black text-blue-400 mb-2 border-b border-slate-800 pb-1.5"><i class="fas fa-info-circle mr-1"></i> 各ゲームモード &amp; 遊び方</h3>
+      <div class="space-y-3 text-slate-300">
+        <div>
+          <b class="text-white text-xs block mb-0.5">【クラシック】</b>
+          <span>手札を盤面にドラッグ。縦横1列揃うと消滅！置けなくなると終了の王道モード。</span>
+        </div>
+        <div>
+          <b class="text-white text-xs block mb-0.5">【フィーバータイム】</b>
+          <span>持ち時間60秒。ライン消去で制限時間回復！コンボするとフィーバーに突入し、スコアが大幅アップします。</span>
+        </div>
+        <div>
+          <b class="text-white text-xs block mb-0.5">【アドベンチャー】</b>
+          <span>ステージ制。盤面にある「水色の氷ブロック」を含む列を消すと氷が破壊されます。全ての氷を砕けばステージクリア！</span>
+        </div>
+        <div>
+          <b class="text-white text-xs block mb-0.5">【お助けアイテム】</b>
+          <span>消去等で手に入るコインを使い、画面中央下のショップからアイテムを購入。特に「1x1ブロック」は緊急時の大ピンチ回避に最適！</span>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- JavaScript ゲームロジック -->
   <script>
     // ==========================================
-    // 1. 定数・グローバルステート & ブロック定義
+    // DOM要素の明示的な宣言（ReferenceError防止）
+    // ==========================================
+    const boardEl = document.getElementById('board');
+    const bombBtn = document.getElementById('itemBombBtn');
+    const shuffleBtn = document.getElementById('itemShuffleBtn');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    const overlay = document.getElementById('overlay');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDesc = document.getElementById('modalDesc');
+    const modalActionBtn = document.getElementById('modalActionBtn');
+
+    // ==========================================
+    // 1. 基本ゲームステートと定数定義
     // ==========================================
     const BOARD_SIZE = 8;
     let boardState = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
     
-    // スコア管理
+    // スコア＆コイン
     let score = 0;
+    let coins = 100; // 初期コイン
     let bestScore = parseInt(localStorage.getItem('block_blast_dx_best') || '0', 10);
+    let scoreMultiplier = 1.0;
 
-    // お助けアイテムカウント
-    let items = {
-      bomb: 2,
-      shuffle: 2
-    };
-
-    // ゲームのアクティブ状態
+    // 現在選択されているゲームモード
+    let selectedMode = 'classic';
     let isGameOver = false;
     let isGameStarted = false;
     let isMuted = false;
-    let isBombModeActive = false; // ボム配置モード
 
-    // ドック情報（各スロットに置かれているブロックデータ）
+    // フィーバータイムモード用ステート
+    let timeLeft = 60;
+    let feverTimerInterval = null;
+    let isFeverActive = false;
+    let feverGauge = 0;
+
+    // アドベンチャーモード用ステート
+    let currentStage = 1;
+    const MAX_STAGES = 10;
+    const STAGE_TEMPLATES = {
+      1: [[2,2], [2,5], [5,2], [5,5]],
+      2: [[3,3], [3,4], [4,3], [4,4]],
+      3: [[1,1], [1,6], [6,1], [6,6], [3,3], [3,4], [4,3], [4,4]],
+      4: [[0,3], [1,3], [2,3], [5,3], [6,3], [7,3]],
+      5: [[2,2], [2,3], [2,4], [2,5], [5,2], [5,3], [5,4], [5,5]],
+      6: [[3,0], [3,1], [3,2], [3,3], [3,4], [3,5], [3,6], [3,7]],
+      7: [[1,1], [2,2], [3,3], [4,4], [5,5], [6,6]],
+      8: [[0,0], [0,7], [7,0], [7,7], [3,3], [3,4], [4,3], [4,4], [2,2], [5,5]],
+      9: [[1,2], [1,5], [2,1], [2,6], [5,1], [5,6], [6,2], [6,5]],
+      10: [[0,0], [1,1], [2,2], [3,3], [4,4], [5,5], [6,6], [7,7], [0,7], [1,6], [2,5], [3,4], [4,3], [5,2], [6,1], [7,0]]
+    };
+
+    // ドックステート
     let dockState = [null, null, null];
+    let isBombModeActive = false;
 
-    // ドラッグ＆ドロップ状態管理
+    // ドラッグ＆ドロップ用ステート
     let dragInfo = {
       isDragging: false,
       slotIndex: null,
@@ -257,26 +389,24 @@
       startY: 0,
       currentX: 0,
       currentY: 0,
-      offsetGridX: 0,
-      offsetGridY: 0,
       pointerId: null
     };
 
-    // ブロック形状の定義 (カラーパターン、回転軸)
+    // ブロックカラー
     const COLORS = {
-      cyan: { bg: 'bg-cyan-500', border: 'border-cyan-400', glow: 'rgba(6, 182, 212, 0.4)' },
-      blue: { bg: 'bg-blue-500', border: 'border-blue-400', glow: 'rgba(59, 130, 246, 0.4)' },
-      indigo: { bg: 'bg-indigo-500', border: 'border-indigo-400', glow: 'rgba(99, 102, 241, 0.4)' },
-      purple: { bg: 'bg-purple-500', border: 'border-purple-400', glow: 'rgba(168, 85, 247, 0.4)' },
-      pink: { bg: 'bg-pink-500', border: 'border-pink-400', glow: 'rgba(236, 72, 153, 0.4)' },
-      red: { bg: 'bg-red-500', border: 'border-red-400', glow: 'rgba(239, 68, 68, 0.4)' },
-      orange: { bg: 'bg-orange-500', border: 'border-orange-400', glow: 'rgba(249, 115, 22, 0.4)' },
-      yellow: { bg: 'bg-yellow-500', border: 'border-yellow-400', glow: 'rgba(234, 179, 8, 0.4)' },
-      green: { bg: 'bg-green-500', border: 'border-green-400', glow: 'rgba(34, 197, 94, 0.4)' },
-      emerald: { bg: 'bg-emerald-500', border: 'border-emerald-400', glow: 'rgba(16, 185, 129, 0.4)' }
+      cyan: { bg: 'bg-cyan-500', border: 'border-cyan-400', glow: 'rgba(6, 182, 212, 0.5)' },
+      blue: { bg: 'bg-blue-500', border: 'border-blue-400', glow: 'rgba(59, 130, 246, 0.5)' },
+      indigo: { bg: 'bg-indigo-500', border: 'border-indigo-400', glow: 'rgba(99, 102, 241, 0.5)' },
+      purple: { bg: 'bg-purple-500', border: 'border-purple-400', glow: 'rgba(168, 85, 247, 0.5)' },
+      pink: { bg: 'bg-pink-500', border: 'border-pink-400', glow: 'rgba(236, 72, 153, 0.5)' },
+      red: { bg: 'bg-red-500', border: 'border-red-400', glow: 'rgba(239, 68, 68, 0.5)' },
+      orange: { bg: 'bg-orange-500', border: 'border-orange-400', glow: 'rgba(249, 115, 22, 0.5)' },
+      yellow: { bg: 'bg-yellow-500', border: 'border-yellow-400', glow: 'rgba(234, 179, 8, 0.5)' },
+      green: { bg: 'bg-emerald-500', border: 'border-emerald-400', glow: 'rgba(16, 185, 129, 0.5)' },
+      ice: { bg: 'bg-sky-200/90', border: 'border-white', glow: 'rgba(255, 255, 255, 0.8)' }
     };
 
-    // 全ての可能なブロックプリセット（1x1から各種テトラミノまで）
+    // ブロック形状プリセット
     const BLOCK_PRESETS = [
       { shape: [[1]], color: 'cyan' },
       { shape: [[1, 1]], color: 'blue' },
@@ -292,12 +422,11 @@
       { shape: [[1, 1, 1], [0, 1, 0]], color: 'green' },
       { shape: [[1, 1, 0], [0, 1, 1]], color: 'red' },
       { shape: [[0, 1, 1], [1, 1, 0]], color: 'red' },
-      { shape: [[1, 0, 1], [1, 1, 1]], color: 'emerald' },
-      { shape: [[1, 1], [1, 1]], color: 'yellow' }
+      { shape: [[1, 0, 1], [1, 1, 1]], color: 'pink' }
     ];
 
     // ==========================================
-    // 2. Web Audio API による合成効果音 (遅延セキュア初期化)
+    // 2. 音声合成効果音 (Web Audio API)
     // ==========================================
     let audioCtx = null;
 
@@ -306,27 +435,25 @@
       try {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       } catch (e) {
-        console.warn("AudioContextの作成がこのブラウザ/iframe環境でブロックされました。ゲームは無音で正常実行されます。", e);
+        console.warn("AudioContext initialization blocked.");
       }
     }
 
     function playSound(type) {
       if (isMuted || !audioCtx) return;
-      
       try {
         if (audioCtx.state === 'suspended') {
           audioCtx.resume();
         }
-
         const now = audioCtx.currentTime;
         switch (type) {
           case 'select': {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'triangle';
-            osc.frequency.setValueAtTime(330, now);
-            osc.frequency.exponentialRampToValueAtTime(660, now + 0.08);
-            gain.gain.setValueAtTime(0.15, now);
+            osc.frequency.setValueAtTime(350, now);
+            osc.frequency.exponentialRampToValueAtTime(700, now + 0.08);
+            gain.gain.setValueAtTime(0.12, now);
             gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -338,50 +465,48 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(440, now);
-            osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
             gain.gain.setValueAtTime(0.15, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.06);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(now);
-            osc.stop(now + 0.08);
+            osc.stop(now + 0.06);
             break;
           }
           case 'place': {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(220, now);
-            osc.frequency.exponentialRampToValueAtTime(110, now + 0.1);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+            osc.frequency.setValueAtTime(260, now);
+            osc.frequency.exponentialRampToValueAtTime(130, now + 0.08);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(now);
-            osc.stop(now + 0.15);
+            osc.stop(now + 0.12);
             break;
           }
           case 'blast': {
-            const duration = 0.4;
             const osc1 = audioCtx.createOscillator();
             const osc2 = audioCtx.createOscillator();
             const gain1 = audioCtx.createGain();
             const gain2 = audioCtx.createGain();
 
             osc1.type = 'sawtooth';
-            osc1.frequency.setValueAtTime(523.25, now);
-            osc1.frequency.exponentialRampToValueAtTime(1046.5, now + duration);
+            osc1.frequency.setValueAtTime(580, now);
+            osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.35);
 
             osc2.type = 'triangle';
-            osc2.frequency.setValueAtTime(130.81, now);
-            osc2.frequency.linearRampToValueAtTime(65.4, now + duration);
+            osc2.frequency.setValueAtTime(150, now);
+            osc2.frequency.linearRampToValueAtTime(70, now + 0.35);
 
-            gain1.gain.setValueAtTime(0.1, now);
-            gain1.gain.linearRampToValueAtTime(0.01, now + duration);
-
-            gain2.gain.setValueAtTime(0.2, now);
-            gain2.gain.linearRampToValueAtTime(0.01, now + duration);
+            gain1.gain.setValueAtTime(0.08, now);
+            gain1.gain.linearRampToValueAtTime(0.01, now + 0.35);
+            gain2.gain.setValueAtTime(0.15, now);
+            gain2.gain.linearRampToValueAtTime(0.01, now + 0.35);
 
             osc1.connect(gain1);
             gain1.connect(audioCtx.destination);
@@ -389,76 +514,70 @@
             gain2.connect(audioCtx.destination);
 
             osc1.start(now);
-            osc1.stop(now + duration);
+            osc1.stop(now + 0.35);
             osc2.start(now);
-            osc2.stop(now + duration);
+            osc2.stop(now + 0.35);
             break;
           }
-          case 'bomb': {
+          case 'fever': {
+            const notes = [261.63, 329.63, 392.00, 523.25];
+            notes.forEach((freq, idx) => {
+              const osc = audioCtx.createOscillator();
+              const gain = audioCtx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+              gain.gain.setValueAtTime(0.12, now + idx * 0.07);
+              gain.gain.linearRampToValueAtTime(0.001, now + idx * 0.07 + 0.2);
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.start(now + idx * 0.07);
+              osc.stop(now + idx * 0.07 + 0.2);
+            });
+            break;
+          }
+          case 'shop': {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(180, now);
-            osc.frequency.exponentialRampToValueAtTime(20, now + 0.5);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(987.77, now);
+            osc.frequency.exponentialRampToValueAtTime(1318.51, now + 0.15);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(now);
-            osc.stop(now + 0.6);
+            osc.stop(now + 0.25);
             break;
           }
           case 'gameover': {
-            const notes = [196.00, 155.56, 130.81];
+            const notes = [220, 180, 140];
             notes.forEach((freq, idx) => {
               const osc = audioCtx.createOscillator();
               const gain = audioCtx.createGain();
               osc.type = 'sawtooth';
-              osc.frequency.setValueAtTime(freq, now + idx * 0.1);
-              osc.frequency.linearRampToValueAtTime(80, now + 0.8);
-              gain.gain.setValueAtTime(0.08, now + idx * 0.1);
-              gain.gain.linearRampToValueAtTime(0.001, now + 0.8);
+              osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+              gain.gain.setValueAtTime(0.08, now + idx * 0.12);
+              gain.gain.linearRampToValueAtTime(0.001, now + idx * 0.12 + 0.5);
               osc.connect(gain);
               gain.connect(audioCtx.destination);
-              osc.start(now + idx * 0.1);
-              osc.stop(now + 0.8);
+              osc.start(now + idx * 0.12);
+              osc.stop(now + idx * 0.12 + 0.5);
             });
-            break;
-          }
-          case 'shuffle': {
-            for (let i = 0; i < 3; i++) {
-              const osc = audioCtx.createOscillator();
-              const gain = audioCtx.createGain();
-              osc.type = 'triangle';
-              osc.frequency.setValueAtTime(300 + (i * 150), now + (i * 0.08));
-              gain.gain.setValueAtTime(0.1, now + (i * 0.08));
-              gain.gain.linearRampToValueAtTime(0.01, now + (i * 0.08) + 0.1);
-              osc.connect(gain);
-              gain.connect(audioCtx.destination);
-              osc.start(now + (i * 0.08));
-              osc.stop(now + (i * 0.08) + 0.1);
-            }
             break;
           }
         }
       } catch (err) {
-        console.warn("効果音の再生に失敗しました:", err);
+        console.warn("Audio failure:", err);
       }
     }
 
     // ==========================================
-    // 3. Canvas パーティクルシステム (超豪華演出)
+    // 3. Canvas 2D パーティクルシステム & 特殊演出
     // ==========================================
     const canvas = document.getElementById('effectsCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    let floatingTexts = [];
 
     function spawnParticles(x, y, colorCode, count = 12) {
       const palette = {
@@ -492,21 +611,43 @@
       }
     }
 
-    let floatingTexts = [];
-    function spawnFloatingText(x, y, text, colorHex = '#3b82f6') {
-      floatingTexts.push({
-        x: x,
-        y: y,
-        text: text,
-        color: colorHex,
+    function spawnFeverParticles() {
+      if (!isFeverActive) return;
+      if (Math.random() > 0.3) return;
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: canvas.height + 10,
+        vx: (Math.random() - 0.5) * 4,
+        vy: -(Math.random() * 5 + 4),
+        size: Math.random() * 4 + 2,
+        color: `hsl(${Math.random() * 360}, 100%, 75%)`,
         alpha: 1,
-        vy: -2,
-        scale: 1
+        decay: 0.01,
+        gravity: 0.01,
+        shape: 'star'
       });
     }
 
-    function updateEffects() {
+    function spawnLevelClearParticles() {
+      for (let i = 0; i < 80; i++) {
+        particles.push({
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          vx: (Math.random() - 0.5) * 20,
+          vy: (Math.random() - 0.5) * 20 - 5,
+          size: Math.random() * 6 + 4,
+          color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+          alpha: 1,
+          decay: 0.012,
+          gravity: 0.12,
+          shape: 'circle'
+        });
+      }
+    }
+
+    function drawEffects() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      spawnFeverParticles();
 
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
@@ -523,24 +664,31 @@
         ctx.save();
         ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = p.shape === 'star' ? 12 : 5;
         ctx.shadowColor = p.color;
 
-        if (p.shape === 'circle') {
-          ctx.beginPath();
+        ctx.beginPath();
+        if (p.shape === 'star') {
+          const rInner = p.size / 2;
+          const rOuter = p.size;
+          for (let j = 0; j < 5; j++) {
+            ctx.lineTo(p.x + Math.cos((18 + j * 72) * Math.PI / 180) * rOuter, p.y - Math.sin((18 + j * 72) * Math.PI / 180) * rOuter);
+            ctx.lineTo(p.x + Math.cos((54 + j * 72) * Math.PI / 180) * rInner, p.y - Math.sin((54 + j * 72) * Math.PI / 180) * rInner);
+          }
+        } else if (p.shape === 'circle') {
           ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
         } else {
-          ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+          ctx.rect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
         }
+        ctx.fill();
         ctx.restore();
       }
 
       for (let i = floatingTexts.length - 1; i >= 0; i--) {
         const t = floatingTexts[i];
         t.y += t.vy;
-        t.alpha -= 0.02;
-        t.scale += 0.01;
+        t.alpha -= 0.025;
+        t.scale += 0.015;
 
         if (t.alpha <= 0) {
           floatingTexts.splice(i, 1);
@@ -550,33 +698,31 @@
         ctx.save();
         ctx.globalAlpha = t.alpha;
         ctx.fillStyle = t.color;
-        ctx.font = `black ${Math.floor(22 * t.scale)}px sans-serif`;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = t.color;
+        ctx.font = `italic 900 ${Math.floor(20 * t.scale)}px sans-serif`;
         ctx.textAlign = 'center';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = t.color;
         ctx.fillText(t.text, t.x, t.y);
         ctx.restore();
       }
 
-      requestAnimationFrame(updateEffects);
+      requestAnimationFrame(drawEffects);
     }
-    requestAnimationFrame(updateEffects);
+    requestAnimationFrame(drawEffects);
 
     // ==========================================
-    // 4. ゲームコアロジック & 盤面描画
+    // 4. グリッドセルの構築
     // ==========================================
-    const boardEl = document.getElementById('board');
-
-    function createBoardCells() {
+    function setupBoardCells() {
       boardEl.innerHTML = '';
       for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
           const cell = document.createElement('div');
           cell.id = `cell-${r}-${c}`;
-          cell.className = "w-full h-full rounded-md bg-slate-900 border border-slate-950 transition-all duration-150 flex items-center justify-center relative overflow-hidden";
+          cell.className = "w-full h-full rounded-lg bg-slate-900/90 border border-slate-950/80 flex items-center justify-center relative overflow-hidden transition-all duration-200 shadow-inner";
           cell.dataset.row = r;
           cell.dataset.col = c;
-          
+
           cell.addEventListener('click', () => handleCellClickForBomb(r, c));
 
           boardEl.appendChild(cell);
@@ -591,47 +737,39 @@
           const cell = document.getElementById(`cell-${r}-${c}`);
           if (!cell) continue;
 
-          cell.className = "w-full h-full rounded-md bg-slate-900 border border-slate-950 transition-all duration-150 flex items-center justify-center relative overflow-hidden";
+          cell.className = "w-full h-full rounded-lg bg-slate-900/90 border border-slate-950/80 flex items-center justify-center relative overflow-hidden transition-all duration-200 shadow-inner";
           cell.innerHTML = '';
+          cell.style.boxShadow = '';
 
           if (val) {
-            const colorInfo = COLORS[val];
-            if (colorInfo) {
+            const colorInfo = COLORS[val] || COLORS.cyan;
+            if (val === 'ice') {
+              cell.className += ` ${colorInfo.bg} border-white/60 border-2 block-3d shadow-[0_0_10px_rgba(255,255,255,0.4)]`;
+              cell.innerHTML = `<div class="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-white/40 animate-pulse"></div><i class="fas fa-snowflake text-[10px] text-sky-400/70"></i>`;
+            } else {
               cell.className += ` ${colorInfo.bg} ${colorInfo.border} block-3d border-2`;
               cell.style.boxShadow = `inset 2px 2px 0px rgba(255,255,255,0.4), inset -2px -2px 0px rgba(0,0,0,0.4), 0 0 6px ${colorInfo.glow}`;
             }
-          } else {
-            cell.style.boxShadow = 'none';
           }
         }
       }
     }
 
-    function triggerScreenShake() {
-      const container = document.getElementById('gameBoardContainer');
-      container.classList.add('shake-active');
-      setTimeout(() => {
-        container.classList.remove('shake-active');
-      }, 300);
-    }
-
-    // ==========================================
-    // 5. ブロックの回転 & 形状処理
-    // ==========================================
-    function rotateMatrixClockwise(matrix) {
-      const rows = matrix.length;
-      const cols = matrix[0].length;
-      const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          rotated[c][rows - 1 - r] = matrix[r][c];
+    function clearBoardHighlights() {
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const cell = document.getElementById(`cell-${r}-${c}`);
+          if (cell && boardState[r][c] === 0) {
+            cell.className = "w-full h-full rounded-lg bg-slate-900/90 border border-slate-950/80 flex items-center justify-center relative overflow-hidden transition-all duration-200 shadow-inner";
+            cell.style.boxShadow = '';
+          }
         }
       }
-      return rotated;
     }
 
-    // ブロックを回転させる
+    // ==========================================
+    // 5. ブロックの回転＆追加補充
+    // ==========================================
     function rotateSlotBlock(slotIndex) {
       if (isGameOver || !isGameStarted || isBombModeActive) return;
       const block = dockState[slotIndex];
@@ -646,9 +784,6 @@
       renderDock();
     }
 
-    // ==========================================
-    // 6. ドックの補充 ＆ 描画
-    // ==========================================
     function replenishDockIfNeeded() {
       const allEmpty = dockState.every(b => b === null);
       if (allEmpty) {
@@ -665,7 +800,6 @@
           isDeployable: true
         };
       }
-      playSound('shuffle');
       checkDeployableState();
       renderDock();
     }
@@ -705,14 +839,14 @@
         gridContainer.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
         gridContainer.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
         gridContainer.style.gap = '2px';
-        gridContainer.className = "w-4/5 h-4/5 max-w-[80px] max-h-[80px] transition-transform duration-200";
+        // ドック内手札の最大サイズ制限を緩和し、より大きく表現
+        gridContainer.className = "w-[95%] h-[95%] max-w-[105px] max-h-[105px] transition-transform duration-200 flex items-center justify-center";
 
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
             const cellVal = shape[r][c];
             const cellEl = document.createElement('div');
-            // 表示崩れを防ぐため w-full h-full を付与
-            cellEl.className = "w-full h-full aspect-square rounded";
+            cellEl.className = "w-full h-full aspect-square rounded-md";
             if (cellVal === 1) {
               cellEl.className += ` ${colorInfo.bg} ${colorInfo.border} block-3d border`;
               cellEl.style.boxShadow = `inset 1px 1px 0px rgba(255,255,255,0.4), inset -1px -1px 0px rgba(0,0,0,0.4), 0 0 3px ${colorInfo.glow}`;
@@ -727,7 +861,7 @@
     }
 
     // ==========================================
-    // 7. ゲームオーバー判定 (checkDeployableState)
+    // 6. 形状配置チェック & ゲームオーバー検知
     // ==========================================
     function checkDeployableState() {
       let anyDeployable = false;
@@ -746,7 +880,11 @@
 
       const hasBlock = dockState.some(b => b !== null);
       if (hasBlock && !anyDeployable) {
-        triggerGameOver();
+        if (coins >= 15) {
+          showStatusIndicator("シャッフルや召喚で大ピンチを切り抜けよう！", '#fbbf24');
+        } else {
+          triggerGameOver();
+        }
       }
     }
 
@@ -787,9 +925,9 @@
     }
 
     // ==========================================
-    // 8. ドラッグ＆ドロップ実装 (Pointer Events)
+    // 7. 特殊吸着シルエットプレビュー搭載のD&Dシステム
     // ==========================================
-    function initDragAndDrop() {
+    function initDragEvents() {
       const slots = document.querySelectorAll('.dock-slot');
       
       slots.forEach(slot => {
@@ -811,7 +949,7 @@
           dragInfo.startX = e.clientX;
           dragInfo.startY = e.clientY;
 
-          createDragClone(block, rect.width, rect.height);
+          createDragClone(block);
           updateDragClonePosition(e.clientX, e.clientY);
         });
 
@@ -819,14 +957,14 @@
           if (!dragInfo.isDragging || dragInfo.pointerId !== e.pointerId) return;
           
           updateDragClonePosition(e.clientX, e.clientY);
-          highlightPotentialPlacement(e.clientX, e.clientY);
+          highlightAndPreview(e.clientX, e.clientY);
         });
 
         slot.addEventListener('pointerup', (e) => {
           if (!dragInfo.isDragging || dragInfo.pointerId !== e.pointerId) return;
           slot.releasePointerCapture(e.pointerId);
           
-          finalizePlacement(e.clientX, e.clientY);
+          finalizeGridPlacement(e.clientX, e.clientY);
         });
 
         slot.addEventListener('pointercancel', (e) => {
@@ -838,7 +976,7 @@
 
     const dragContainer = document.getElementById('dragContainer');
 
-    function createDragClone(block, width, height) {
+    function createDragClone(block) {
       dragContainer.innerHTML = '';
       dragContainer.classList.remove('hidden');
 
@@ -853,17 +991,18 @@
       gridContainer.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
       gridContainer.style.gap = '3px';
 
-      const isTouch = window.matchMedia('(pointer: coarse)').matches;
-      const cellSize = isTouch ? '36px' : '30px';
+      // 盤面のセルの実際の1マスの幅を取得して、完全にそれと同期する
+      const boardRect = boardEl.getBoundingClientRect();
+      const actualCellWidth = boardRect.width / BOARD_SIZE;
 
-      gridContainer.style.width = `calc(${cols} * ${cellSize})`;
-      gridContainer.style.height = `calc(${rows} * ${cellSize})`;
+      gridContainer.style.width = `calc(${cols} * ${actualCellWidth}px)`;
+      gridContainer.style.height = `calc(${rows} * ${actualCellWidth}px)`;
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const cellVal = shape[r][c];
           const cellEl = document.createElement('div');
-          cellEl.className = "w-full h-full aspect-square rounded shadow-lg";
+          cellEl.className = "w-full h-full aspect-square rounded-md";
           if (cellVal === 1) {
             cellEl.className += ` ${colorInfo.bg} ${colorInfo.border} block-3d border-2`;
             cellEl.style.boxShadow = `inset 2px 2px 0px rgba(255,255,255,0.4), inset -2px -2px 0px rgba(0,0,0,0.4), 0 0 10px ${colorInfo.glow}`;
@@ -878,13 +1017,14 @@
 
     function updateDragClonePosition(clientX, clientY) {
       const isTouch = window.matchMedia('(pointer: coarse)').matches;
-      const offsetY = isTouch ? -75 : -15;
+      // Yオフセットをタッチデバイス時はやや大きめ(-85px)にして指でブロックが隠れないようにする。PCは-20px。
+      const offsetY = isTouch ? -85 : -20;
 
       dragContainer.style.left = `${clientX}px`;
       dragContainer.style.top = `${clientY + offsetY}px`;
     }
 
-    function highlightPotentialPlacement(clientX, clientY) {
+    function highlightAndPreview(clientX, clientY) {
       clearBoardHighlights();
 
       const cellCoord = getTargetBoardCell(clientX, clientY);
@@ -895,38 +1035,43 @@
       if (!block) return;
 
       if (canPlaceShapeAt(block.shape, row, col)) {
-        highlightPlacementArea(block.shape, row, col, block.color);
+        drawGhostPreview(block.shape, row, col, block.color);
       }
     }
 
+    // 画面座標から盤面グリッドの最適なインデックス(row, col)を検出（ズレを大幅に補正）
     function getTargetBoardCell(clientX, clientY) {
       const boardRect = boardEl.getBoundingClientRect();
       
-      if (clientX < boardRect.left || clientX > boardRect.right ||
-          clientY < boardRect.top || clientY > boardRect.bottom) {
-        return null;
-      }
-
+      // 1セル辺りの実際のピクセル幅と高さを動的に算出
       const cellWidth = boardRect.width / BOARD_SIZE;
       const cellHeight = boardRect.height / BOARD_SIZE;
 
       const isTouch = window.matchMedia('(pointer: coarse)').matches;
-      const offsetY = isTouch ? -75 : -15;
+      const offsetY = isTouch ? -85 : -20;
 
-      const targetX = clientX - boardRect.left;
-      const targetY = (clientY + offsetY) - boardRect.top;
+      // タッチオフセット分を加味した、仮想のドラッグ中心点
+      const virtualY = clientY + offsetY;
 
-      if (targetX < 0 || targetX >= boardRect.width || targetY < 0 || targetY >= boardRect.height) {
+      // 盤面の外すぎる場合は除外
+      if (clientX < boardRect.left - cellWidth/2 || clientX > boardRect.right + cellWidth/2 ||
+          virtualY < boardRect.top - cellHeight/2 || virtualY > boardRect.bottom + cellHeight/2) {
         return null;
       }
+
+      // 盤面上のローカル相対座標
+      const targetX = clientX - boardRect.left;
+      const targetY = virtualY - boardRect.top;
 
       const block = dockState[dragInfo.slotIndex];
       const sRows = block.shape.length;
       const sCols = block.shape[0].length;
 
-      const col = Math.floor(targetX / cellWidth) - Math.floor(sCols / 2);
-      const row = Math.floor(targetY / cellHeight) - Math.floor(sRows / 2);
+      // ブロックのマトリックス中心から、配置のための左上基準座標を逆算（四捨五入で吸いつき度を向上）
+      const col = Math.round((targetX - (sCols * cellWidth) / 2) / cellWidth);
+      const row = Math.round((targetY - (sRows * cellHeight) / 2) / cellHeight);
 
+      // グリッド範囲内に完全に収まるか確認
       if (row < 0 || row + sRows > BOARD_SIZE || col < 0 || col + sCols > BOARD_SIZE) {
         return null;
       }
@@ -934,14 +1079,14 @@
       return { row, col };
     }
 
-    function highlightPlacementArea(shape, startRow, startCol, colorCode) {
+    function drawGhostPreview(shape, startRow, startCol, colorCode) {
       const colorInfo = COLORS[colorCode] || COLORS.cyan;
       for (let r = 0; r < shape.length; r++) {
         for (let c = 0; c < shape[0].length; c++) {
           if (shape[r][c] === 1) {
             const cell = document.getElementById(`cell-${startRow + r}-${startCol + c}`);
             if (cell) {
-              cell.classList.add('bg-white/30', 'scale-95');
+              cell.className += ` ${colorInfo.bg} opacity-50 block-3d border-2 border-dashed border-white`;
               cell.style.boxShadow = `0 0 15px ${colorInfo.glow}`;
             }
           }
@@ -949,19 +1094,7 @@
       }
     }
 
-    function clearBoardHighlights() {
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-          const cell = document.getElementById(`cell-${r}-${c}`);
-          if (cell && boardState[r][c] === 0) {
-            cell.className = "w-full h-full rounded-md bg-slate-900 border border-slate-950 transition-all duration-150 flex items-center justify-center relative overflow-hidden";
-            cell.style.boxShadow = 'none';
-          }
-        }
-      }
-    }
-
-    function finalizePlacement(clientX, clientY) {
+    function finalizeGridPlacement(clientX, clientY) {
       const cellCoord = getTargetBoardCell(clientX, clientY);
       const slotIndex = dragInfo.slotIndex;
       const block = dockState[slotIndex];
@@ -970,20 +1103,22 @@
         const { row, col } = cellCoord;
 
         if (canPlaceShapeAt(block.shape, row, col)) {
-          let placedCellsCount = 0;
+          let placedCells = 0;
           for (let r = 0; r < block.shape.length; r++) {
             for (let c = 0; c < block.shape[0].length; c++) {
               if (block.shape[r][c] === 1) {
                 boardState[row + r][col + c] = block.color;
-                placedCellsCount++;
+                placedCells++;
               }
             }
           }
 
           dockState[slotIndex] = null;
-          addScore(placedCellsCount, "BLOCK PLACE!");
-          playSound('place');
           
+          const scoreGained = Math.floor(placedCells * scoreMultiplier);
+          addScore(scoreGained);
+          playSound('place');
+
           const boardRect = boardEl.getBoundingClientRect();
           const cellWidth = boardRect.width / BOARD_SIZE;
           const cellHeight = boardRect.height / BOARD_SIZE;
@@ -992,12 +1127,12 @@
               if (block.shape[r][c] === 1) {
                 const px = boardRect.left + (col + c + 0.5) * cellWidth;
                 const py = boardRect.top + (row + r + 0.5) * cellHeight;
-                spawnParticles(px, py, block.color, 6);
+                spawnParticles(px, py, block.color, 8);
               }
             }
           }
 
-          checkAndClearLines();
+          checkLinesAndClears();
 
           renderBoard();
           replenishDockIfNeeded();
@@ -1005,7 +1140,6 @@
           renderDock();
         }
       }
-
       resetDragState();
     }
 
@@ -1019,9 +1153,9 @@
     }
 
     // ==========================================
-    // 9. ライン消去とコンボ処理
+    // 8. ライン消去、コンボシステム、ステージ条件
     // ==========================================
-    function checkAndClearLines() {
+    function checkLinesAndClears() {
       let rowsToClear = [];
       let colsToClear = [];
 
@@ -1049,8 +1183,10 @@
 
       const totalLines = rowsToClear.length + colsToClear.length;
       if (totalLines > 0) {
-        const lineBonus = totalLines * 100 * totalLines;
-        
+        const lineBonus = Math.floor(totalLines * 100 * totalLines * scoreMultiplier);
+        const coinsEarned = totalLines * 2;
+        addCoins(coinsEarned);
+
         const boardRect = boardEl.getBoundingClientRect();
         const cellWidth = boardRect.width / BOARD_SIZE;
         const cellHeight = boardRect.height / BOARD_SIZE;
@@ -1060,7 +1196,7 @@
             const colorCode = boardState[r][c];
             const px = boardRect.left + (c + 0.5) * cellWidth;
             const py = boardRect.top + (r + 0.5) * cellHeight;
-            spawnParticles(px, py, colorCode, 15);
+            spawnParticles(px, py, colorCode, 14);
           }
         });
 
@@ -1070,7 +1206,7 @@
             const colorCode = boardState[r][c];
             const px = boardRect.left + (c + 0.5) * cellWidth;
             const py = boardRect.top + (r + 0.5) * cellHeight;
-            spawnParticles(px, py, colorCode, 15);
+            spawnParticles(px, py, colorCode, 14);
           }
         });
 
@@ -1081,51 +1217,180 @@
           for (let r = 0; r < BOARD_SIZE; r++) boardState[r][c] = 0;
         });
 
+        if (selectedMode === 'fever') {
+          feverGauge = Math.min(100, feverGauge + totalLines * 20);
+          timeLeft = Math.min(99, timeLeft + totalLines * 4);
+          updateFeverBar();
+
+          if (feverGauge >= 100 && !isFeverActive) {
+            activateFeverState();
+          }
+        }
+
+        triggerCutInBanner(totalLines);
+
         playSound('blast');
         triggerScreenShake();
+        addScore(lineBonus);
 
-        const midX = boardRect.left + boardRect.width / 2;
-        const midY = boardRect.top + boardRect.height / 2;
-        const message = totalLines > 1 ? `${totalLines} COMBO!! +${lineBonus}` : `LINE CLEAR! +${lineBonus}`;
-        spawnFloatingText(midX, midY - 20, message, '#f43f5e');
-
-        addScore(lineBonus, `${totalLines}ライン消去！`);
+        if (selectedMode === 'adventure') {
+          checkAdventureStageClear();
+        }
       }
     }
 
-    function addScore(points, reason = "") {
+    function triggerCutInBanner(lines) {
+      const banner = document.getElementById('bannerCutIn');
+      const bText = document.getElementById('bannerText');
+      const bSub = document.getElementById('bannerSubText');
+
+      if (lines === 1) {
+        bText.textContent = "LINE BLAST!";
+        bSub.textContent = `Score +${Math.floor(100 * scoreMultiplier)}`;
+      } else if (lines === 2) {
+        bText.textContent = "DOUBLE BLAST!";
+        bSub.textContent = `Awesome! Score +${Math.floor(400 * scoreMultiplier)}`;
+      } else if (lines === 3) {
+        bText.textContent = "TRIPLE BLAST!!";
+        bSub.textContent = `Excellent! Score +${Math.floor(900 * scoreMultiplier)}`;
+      } else {
+        bText.textContent = "MEGA BLAST!!!";
+        bSub.textContent = `GODLIKE! Score +${Math.floor(1600 * scoreMultiplier)}`;
+      }
+
+      banner.classList.remove('hidden');
+      const inner = banner.querySelector('div');
+      inner.classList.remove('banner-active');
+      void inner.offsetWidth;
+      inner.classList.add('banner-active');
+
+      setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 1400);
+    }
+
+    function checkAdventureStageClear() {
+      let iceRemaining = 0;
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (boardState[r][c] === 'ice') {
+            iceRemaining++;
+          }
+        }
+      }
+
+      if (iceRemaining === 0) {
+        triggerStageClear();
+      }
+    }
+
+    function triggerStageClear() {
+      isGameStarted = false;
+      spawnLevelClearParticles();
+      playSound('fever');
+
+      setTimeout(() => {
+        if (currentStage < MAX_STAGES) {
+          currentStage++;
+          showOverlay(true, `STAGE ${currentStage-1} CLEAR!`, `おめでとうございます！コイン+50枚！次のステージに挑戦しましょう！`, `ステージ ${currentStage} を開始`);
+          addCoins(50);
+        } else {
+          showOverlay(false, "ADVENTURE ALL CLEAR!", "素晴らしい！全アドベンチャーステージをクリアしました！", "セレクトメニューへ");
+          currentStage = 1;
+        }
+      }, 1000);
+    }
+
+    // ==========================================
+    // 9. フィーバー＆ステート変化システム
+    // ==========================================
+    function activateFeverState() {
+      isFeverActive = true;
+      scoreMultiplier = 3.0;
+      document.getElementById('multiplierVal').textContent = "x3.0";
+      document.getElementById('multiplierVal').className = "text-lg font-black text-pink-500 neon-text-pink animate-pulse";
+      document.getElementById('gameBody').classList.add('fever-active-bg');
+      
+      playSound('fever');
+      showStatusIndicator("🔥 フィーバー！得点3倍モード！ 🔥", '#ec4899');
+
+      let feverDuration = 10;
+      const feverInterval = setInterval(() => {
+        feverDuration--;
+        feverGauge = Math.floor((feverDuration / 10) * 100);
+        updateFeverBar();
+
+        if (feverDuration <= 0) {
+          clearInterval(feverInterval);
+          deactivateFeverState();
+        }
+      }, 1000);
+    }
+
+    function deactivateFeverState() {
+      isFeverActive = false;
+      scoreMultiplier = 1.0;
+      feverGauge = 0;
+      document.getElementById('multiplierVal').textContent = "x1.0";
+      document.getElementById('multiplierVal').className = "text-lg font-extrabold text-amber-400 neon-text-amber";
+      document.getElementById('gameBody').classList.remove('fever-active-bg');
+      updateFeverBar();
+      showStatusIndicator("フィーバー終了", '#cbd5e1');
+    }
+
+    function updateFeverBar() {
+      const bar = document.getElementById('feverBar');
+      bar.style.width = `${feverGauge}%`;
+    }
+
+    function addScore(points) {
       score += points;
       document.getElementById('scoreVal').textContent = score;
 
       if (score > bestScore) {
         bestScore = score;
-        document.getElementById('bestScoreVal').textContent = bestScore;
         localStorage.setItem('block_blast_dx_best', bestScore);
+        updateBestScoreUI();
       }
     }
 
-    // ==========================================
-    // 10. お助けアイテムの処理 (ボム & シャッフル)
-    // ==========================================
-    const bombBtn = document.getElementById('itemBombBtn');
-    const shuffleBtn = document.getElementById('itemShuffleBtn');
-    const statusIndicator = document.getElementById('statusIndicator');
-    const statusText = document.getElementById('statusText');
+    function updateBestScoreUI() {
+      const bestScoreVal = document.getElementById('bestScoreVal');
+      if (bestScoreVal) {
+        bestScoreVal.textContent = bestScore;
+      }
+      
+      if (selectedMode === 'classic') {
+        const midInfoValue = document.getElementById('midInfoValue');
+        if (midInfoValue) {
+          midInfoValue.textContent = bestScore;
+        }
+      }
+    }
 
+    function addCoins(val) {
+      coins += val;
+      document.getElementById('coinVal').textContent = coins;
+    }
+
+    // ==========================================
+    // 10. コインショップのお助け機能
+    // ==========================================
     bombBtn.addEventListener('click', () => {
       if (isGameOver || !isGameStarted) return;
-      if (items.bomb <= 0) return;
-
-      isBombModeActive = !isBombModeActive;
-
       if (isBombModeActive) {
-        bombBtn.classList.add('bg-red-700/80', 'border-red-400');
-        statusIndicator.classList.remove('opacity-0');
-        statusIndicator.classList.add('opacity-100');
-        statusText.textContent = "ボム：破壊する中心のマスをタップしてください";
-      } else {
         deactivateBombMode();
+        return;
       }
+
+      if (coins < 30) {
+        showStatusIndicator("⚠️ コインが足りません！ (ボム：30コイン)", '#ef4444');
+        return;
+      }
+
+      isBombModeActive = true;
+      bombBtn.classList.add('bg-red-700/80', 'border-red-400');
+      showStatusIndicator("ボム：破壊したいマスの中心(3x3)をタップしてください", '#f87171');
     });
 
     function deactivateBombMode() {
@@ -1136,11 +1401,10 @@
     }
 
     function handleCellClickForBomb(row, col) {
-      if (!isBombModeActive || items.bomb <= 0) return;
+      if (!isBombModeActive || coins < 30) return;
 
-      items.bomb--;
-      document.getElementById('bombCount').textContent = items.bomb;
-      playSound('bomb');
+      addCoins(-30);
+      playSound('shop');
 
       const boardRect = boardEl.getBoundingClientRect();
       const cellWidth = boardRect.width / BOARD_SIZE;
@@ -1153,7 +1417,7 @@
             if (colorCode !== 0) {
               const px = boardRect.left + (c + 0.5) * cellWidth;
               const py = boardRect.top + (r + 0.5) * cellHeight;
-              spawnParticles(px, py, colorCode, 12);
+              spawnParticles(px, py, colorCode, 15);
               boardState[r][c] = 0;
             }
           }
@@ -1163,7 +1427,6 @@
       const centerX = boardRect.left + (col + 0.5) * cellWidth;
       const centerY = boardRect.top + (row + 0.5) * cellHeight;
       spawnParticles(centerX, centerY, 'red', 40);
-      spawnFloatingText(centerX, centerY - 15, "BOMB BLAST!", '#ef4444');
 
       triggerScreenShake();
       deactivateBombMode();
@@ -1171,60 +1434,142 @@
       renderBoard();
       checkDeployableState();
       renderDock();
-
-      if (items.bomb === 0) {
-        bombBtn.classList.add('opacity-50', 'pointer-events-none');
-      }
     }
 
     shuffleBtn.addEventListener('click', () => {
       if (isGameOver || !isGameStarted || isBombModeActive) return;
-      if (items.shuffle <= 0) return;
 
-      items.shuffle--;
-      document.getElementById('shuffleCount').textContent = items.shuffle;
-
-      replenishDock();
-
-      if (items.shuffle === 0) {
-        shuffleBtn.classList.add('opacity-50', 'pointer-events-none');
+      if (coins < 15) {
+        showStatusIndicator("⚠️ コインが足りません！ (シャッフル：15コイン)", '#ef4444');
+        return;
       }
+
+      addCoins(-15);
+      playSound('shop');
+      replenishDock();
+      showStatusIndicator("シャッフルしました！", '#fbbf24');
     });
 
-    // ==========================================
-    // 11. ゲームの開始 / リセット / ゲームオーバー
-    // ==========================================
-    const overlay = document.getElementById('overlay');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalDesc = document.getElementById('modalDesc');
-    const modalScoreBox = document.getElementById('modalScoreBox');
-    const modalScore = document.getElementById('modalScore');
-    const newBestBadge = document.getElementById('newBestBadge');
-    const modalActionBtn = document.getElementById('modalActionBtn');
+    const singleBtn = document.getElementById('itemSingleBtn');
+    singleBtn.addEventListener('click', () => {
+      if (isGameOver || !isGameStarted || isBombModeActive) return;
 
-    function initGame() {
-      createBoardCells();
-      document.getElementById('bestScoreVal').textContent = bestScore;
-      showOverlay(true, "BLOCK BLAST DX", "回転機能＆お助けボム搭載デラックスエディションへようこそ！", "ゲームスタート");
+      const emptySlotIndex = dockState.findIndex(b => b === null);
+      if (emptySlotIndex === -1) {
+        showStatusIndicator("⚠️ ドックが一杯です！ブロックを置いてから召喚してください", '#ef4444');
+        return;
+      }
+
+      if (coins < 40) {
+        showStatusIndicator("⚠️ コインが足りません！ (1x1召喚：40コイン)", '#ef4444');
+        return;
+      }
+
+      addCoins(-40);
+      playSound('shop');
+
+      dockState[emptySlotIndex] = {
+        shape: [[1]],
+        color: 'yellow',
+        isDeployable: true
+      };
+
+      checkDeployableState();
+      renderDock();
+      showStatusIndicator("お助け1x1ブロックをドックに召喚しました！", '#60a5fa');
+    });
+
+    function showStatusIndicator(text, colorHex) {
+      statusIndicator.classList.remove('opacity-0');
+      statusIndicator.classList.add('opacity-100');
+      statusText.textContent = text;
+      statusText.style.color = colorHex;
+      
+      setTimeout(() => {
+        statusIndicator.classList.remove('opacity-100');
+        statusIndicator.classList.add('opacity-0');
+      }, 4000);
     }
 
-    function startNewGame() {
+    // ==========================================
+    // 11. ゲームの開始とモード設定
+    // ==========================================
+    function initGameSetup() {
+      setupBoardCells();
+      
+      boardState = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+      renderBoard();
+      
+      dockState = [null, null, null];
+      replenishDock();
+
+      updateBestScoreUI();
+      document.getElementById('coinVal').textContent = coins;
+    }
+
+    function startSession() {
       boardState = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
       score = 0;
       isGameOver = false;
       isGameStarted = true;
-
-      items = { bomb: 2, shuffle: 2 };
-      document.getElementById('bombCount').textContent = items.bomb;
-      document.getElementById('shuffleCount').textContent = items.shuffle;
-      
-      bombBtn.classList.remove('opacity-50', 'pointer-events-none');
-      shuffleBtn.classList.remove('opacity-50', 'pointer-events-none');
+      scoreMultiplier = 1.0;
 
       document.getElementById('scoreVal').textContent = "0";
+      document.getElementById('multiplierVal').textContent = "x1.0";
+      document.getElementById('multiplierVal').className = "text-lg font-extrabold text-amber-400 neon-text-amber";
+      document.getElementById('gameBody').classList.remove('fever-active-bg');
+
+      clearInterval(feverTimerInterval);
+      const feverBarContainer = document.getElementById('feverBarContainer');
+      const midPanelTitle = document.getElementById('midInfoTitle');
+      const midPanelValue = document.getElementById('midInfoValue');
+
+      if (selectedMode === 'classic') {
+        feverBarContainer.classList.add('hidden');
+        midPanelTitle.textContent = "BEST SCORE";
+        midPanelValue.textContent = bestScore;
+        midPanelValue.className = "text-lg font-extrabold text-pink-400 neon-text-pink";
+      } 
+      else if (selectedMode === 'fever') {
+        feverBarContainer.classList.remove('hidden');
+        feverGauge = 0;
+        timeLeft = 60;
+        updateFeverBar();
+
+        midPanelTitle.textContent = "TIME LEFT";
+        midPanelValue.textContent = "60s";
+        midPanelValue.className = "text-lg font-extrabold text-green-400";
+
+        feverTimerInterval = setInterval(() => {
+          if (!isGameStarted) return;
+          timeLeft--;
+          midPanelValue.textContent = `${timeLeft}s`;
+
+          if (timeLeft <= 15) {
+            midPanelValue.className = "text-lg font-extrabold text-red-500 animate-pulse";
+          } else {
+            midPanelValue.className = "text-lg font-extrabold text-green-400";
+          }
+
+          if (timeLeft <= 0) {
+            triggerGameOver();
+          }
+        }, 1000);
+      } 
+      else if (selectedMode === 'adventure') {
+        feverBarContainer.classList.add('hidden');
+        midPanelTitle.textContent = "STAGE";
+        midPanelValue.textContent = `${currentStage} / ${MAX_STAGES}`;
+        midPanelValue.className = "text-lg font-extrabold text-amber-400 neon-text-amber";
+
+        const obstacles = STAGE_TEMPLATES[currentStage] || [];
+        obstacles.forEach(([r, c]) => {
+          boardState[r][c] = 'ice';
+        });
+      }
 
       renderBoard();
-
+      
       dockState = [null, null, null];
       replenishDock();
 
@@ -1234,21 +1579,23 @@
     function triggerGameOver() {
       isGameOver = true;
       isGameStarted = false;
+      clearInterval(feverTimerInterval);
       playSound('gameover');
 
       const isNewBest = score >= bestScore;
-      if (isNewBest) {
+      if (isNewBest && selectedMode === 'classic') {
         bestScore = score;
         localStorage.setItem('block_blast_dx_best', bestScore);
-        newBestBadge.classList.remove('hidden');
+        document.getElementById('newBestBadge').classList.remove('hidden');
       } else {
-        newBestBadge.classList.add('hidden');
+        document.getElementById('newBestBadge').classList.add('hidden');
       }
 
-      modalScore.textContent = score;
-      modalScoreBox.classList.remove('hidden');
+      const scoreBox = document.getElementById('modalScoreBox');
+      scoreBox.classList.remove('hidden');
+      document.getElementById('modalScore').textContent = score;
 
-      showOverlay(false, "GAME OVER", "もうブロックを配置する場所がありません！", "もう一度挑戦する");
+      showOverlay(false, "GAME OVER", "すべての手札が配置できなくなりました！", "もう一度プレイ");
     }
 
     function showOverlay(isStart, title, desc, btnText) {
@@ -1256,24 +1603,62 @@
       modalDesc.textContent = desc;
       modalActionBtn.textContent = btnText;
 
+      const scoreBox = document.getElementById('modalScoreBox');
+      const selector = document.getElementById('modeSelectorPanel');
+
       if (isStart) {
-        modalScoreBox.classList.add('hidden');
+        scoreBox.classList.add('hidden');
+        selector.classList.remove('hidden');
       } else {
-        modalScoreBox.classList.remove('hidden');
+        selector.classList.add('hidden');
       }
 
       overlay.classList.remove('hidden');
     }
 
-    modalActionBtn.addEventListener('click', () => {
-      // ユーザー操作時に安全にオーディオを起動
-      initAudio();
-      startNewGame();
+    // ==========================================
+    // 12. 各種ボタンイベント
+    // ==========================================
+    const classicBtn = document.getElementById('selectClassicBtn');
+    const feverBtn = document.getElementById('selectFeverBtn');
+    const adventureBtn = document.getElementById('selectAdventureBtn');
+    const modeLabel = document.getElementById('currentModeLabel');
+
+    function resetSelectionClasses() {
+      [classicBtn, feverBtn, adventureBtn].forEach(b => {
+        b.className = "flex items-center gap-2.5 w-full p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-left hover:bg-slate-800/50 transition-all";
+      });
+    }
+
+    classicBtn.addEventListener('click', () => {
+      selectedMode = 'classic';
+      resetSelectionClasses();
+      classicBtn.className = "flex items-center gap-2.5 w-full p-2.5 rounded-xl border-2 border-purple-500 bg-purple-950/20 text-left transition-all";
+      modalActionBtn.textContent = "クラシックを開始する";
+      modeLabel.textContent = "CLASSIC MODE";
     });
 
-    // ==========================================
-    // 12. ヘルプモーダル & UIイベント
-    // ==========================================
+    feverBtn.addEventListener('click', () => {
+      selectedMode = 'fever';
+      resetSelectionClasses();
+      feverBtn.className = "flex items-center gap-2.5 w-full p-2.5 rounded-xl border-2 border-pink-500 bg-pink-950/20 text-left transition-all";
+      modalActionBtn.textContent = "フィーバーを開始する";
+      modeLabel.textContent = "FEVER TIME MODE";
+    });
+
+    adventureBtn.addEventListener('click', () => {
+      selectedMode = 'adventure';
+      resetSelectionClasses();
+      adventureBtn.className = "flex items-center gap-2.5 w-full p-2.5 rounded-xl border-2 border-amber-500 bg-amber-950/20 text-left transition-all";
+      modalActionBtn.textContent = `ステージ ${currentStage} を開始`;
+      modeLabel.textContent = `ADVENTURE: STAGE ${currentStage}`;
+    });
+
+    modalActionBtn.addEventListener('click', () => {
+      initAudio();
+      startSession();
+    });
+
     const helpBtn = document.getElementById('helpBtn');
     const helpModal = document.getElementById('helpModal');
     const closeHelpBtn = document.getElementById('closeHelpBtn');
@@ -1291,7 +1676,7 @@
     muteBtn.addEventListener('click', () => {
       isMuted = !isMuted;
       if (isMuted) {
-        muteIcon.className = "fas fa-volume-mute text-gray-500";
+        muteIcon.className = "fas fa-volume-mute text-slate-500";
       } else {
         muteIcon.className = "fas fa-volume-up text-blue-400";
         initAudio();
@@ -1316,9 +1701,29 @@
       });
     });
 
+    function rotateMatrixClockwise(matrix) {
+      const rows = matrix.length;
+      const cols = matrix[0].length;
+      const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          rotated[c][rows - 1 - r] = matrix[r][c];
+        }
+      }
+      return rotated;
+    }
+
+    function triggerScreenShake() {
+      const container = document.getElementById('gameBoardContainer');
+      container.classList.add('shake-active');
+      setTimeout(() => {
+        container.classList.remove('shake-active');
+      }, 350);
+    }
+
     window.onload = function() {
-      initGame();
-      initDragAndDrop();
+      initGameSetup();
+      initDragEvents();
     };
 
   </script>
